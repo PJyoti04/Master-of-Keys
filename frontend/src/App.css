@@ -1,0 +1,68 @@
+:root {
+  --bg : #181C22;
+}
+.typewriter h1 {
+    overflow: hidden; /* Ensures the content is not revealed until the animation */
+    border-right: .15em solid orange; /* The typwriter cursor */
+    white-space: nowrap; /* Keeps the content on a single line */
+    margin: 0 auto; /* Gives that scrolling effect as the typing happens */
+    letter-spacing: .15em; /* Adjust as needed */
+    animation: 
+      typing 7.5s steps(10, end) infinite,
+      blink-caret 1s step-end infinite;
+  }
+  
+  /* The typing effect */
+  @keyframes typing {
+    /* from { width: 0 }
+    to { width: 100% } */
+    0% { width: 0 }
+    50% { width:100% }
+    100% { width: 0 }
+  }
+  
+  /* The typewriter cursor effect */
+  @keyframes blink-caret {
+    from, to { border-color: transparent }
+    50% { border-color: orange; }
+  }
+
+  .kb-container {
+    perspective: 1200px;
+    overflow: hidden;
+    /* perspective-origin: 50% 50%; */
+  }
+  
+  .kb {
+    transition: transform 0.5s ease-in-out;
+  }
+  
+  .kb:hover {
+    transform: rotateX(15deg) rotateY(-18deg) rotateZ(25deg) skewX(6deg) skewY(-5deg) ;
+  }
+  
+/* .div{
+  background: linear-gradient(to top,black,#000000d0,#000000d7,transparent);
+} */
+
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none; 
+}
+.scroll-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* Text Box animation */
+@keyframes blink {
+  0%, 100% {
+    height: 0%;
+  }
+  50% {
+    height: 100%;
+  }
+}
+
+.custom-blink {
+  animation: blink 1s step-start infinite;
+}
