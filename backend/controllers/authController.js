@@ -1,12 +1,12 @@
-const User = require("../models/User");
-const bcrypt = require("bcryptjs");
-const generateToken = require("../utils/generateToken");
-const sendEmail = require("../utils/sendEmail");
-const sendOtpEmail= require("../utils/sendOtpEmail")
-const ResetOtp = require("../models/ResetOtp");
-const crypto = require("crypto");
+import User from "../models/User.js";
+import bcrypt from "bcryptjs";
+import generateToken from "../utils/generateToken.js";
+import sendOtpEmail from "../utils/sendOtpEmail.js";
+import sendEmail from "../utils/sendEmail.js";
+import ResetOtp from "../models/ResetOtp.js";
+import crypto from "crypto";
 
-exports.register = async (req, res) => {
+const register = async (req, res) => {
   const { username, email, password } = req.body;
   try {
     const emailExists = await User.findOne({ email });
@@ -36,7 +36,7 @@ exports.register = async (req, res) => {
   }
 };
 
-exports.login = async (req, res) => {
+const login = async (req, res) => {
   const { identifier, password } = req.body;
   try {
     const user = await User.findOne({
@@ -64,12 +64,12 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.logout = (req, res) => {
+const logout = (req, res) => {
   res.clearCookie("token").json({ message: "Logged out successfully" });
 };
 
 //Load Login status on intial loading...
-exports.getCurrentUser = async (req, res) => {
+const getCurrentUser = async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: "Not authenticated" });
@@ -87,7 +87,7 @@ exports.getCurrentUser = async (req, res) => {
 };
 
 // Send OTP for password reset
-exports.sendResetOtp = async (req, res) => {
+const sendResetOtp = async (req, res) => {
   // const { email } = req.body;
   const email = req.user.email;
   try {
@@ -115,7 +115,7 @@ exports.sendResetOtp = async (req, res) => {
 };
 
 // Verify OTP
-exports.verifyResetOtp = async (req, res) => {
+const verifyResetOtp = async (req, res) => {
   const { otp } = req.body;
   const email = req.user.email;
   try {
@@ -137,7 +137,7 @@ exports.verifyResetOtp = async (req, res) => {
 };
 
 // Reset password after OTP verification
-exports.resetPassword = async (req, res) => {
+const resetPassword = async (req, res) => {
   const { newPassword , confirmPassword } = req.body;
     const email = req.user.email;
   try {
@@ -164,3 +164,13 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ message: "Password reset error" });
   }
 };
+
+export {
+  register,
+  login,
+  logout,
+  getCurrentUser,
+  sendResetOtp,
+  verifyResetOtp,
+  resetPassword,
+}

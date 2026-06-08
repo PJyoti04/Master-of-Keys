@@ -1,6 +1,6 @@
-const TypingSession = require('../models/TypingSession');
+import TypingSession from "../models/TypingSession.js";
 
-exports.saveSession = async (req, res) => {
+const saveSession = async (req, res) => {
   const { wpm, accuracy, text } = req.body;
   try {
     const session = await TypingSession.create({ userId: req.user.id, wpm, accuracy, text });
@@ -10,7 +10,7 @@ exports.saveSession = async (req, res) => {
   }
 };
 
-exports.getHistory = async (req, res) => {
+const getHistory = async (req, res) => {
   try {
     const skip = parseInt(req.query.skip) || 0;
     const limit = parseInt(req.query.limit) || 10;
@@ -23,3 +23,8 @@ exports.getHistory = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export {
+  saveSession,
+  getHistory,
+}

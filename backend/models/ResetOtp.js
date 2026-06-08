@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const resetOtpSchema = new mongoose.Schema({
   userId: {
@@ -21,4 +21,5 @@ const resetOtpSchema = new mongoose.Schema({
 // Optional: add index manually (if needed)
 // resetOtpSchema.index({ createdAt: 1 }, { expireAfterSeconds: 300 });
 
-module.exports = mongoose.model('ResetOtp', resetOtpSchema);
+const ResetOtp = mongoose.model('ResetOtp', resetOtpSchema);
+export default ResetOtp;

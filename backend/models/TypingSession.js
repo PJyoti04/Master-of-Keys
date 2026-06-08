@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const sessionSchema = new mongoose.Schema({
   userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -8,4 +8,5 @@ const sessionSchema = new mongoose.Schema({
   date:     { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('TypingSession', sessionSchema);
+const TypingSession = mongoose.model('TypingSession', sessionSchema);
+ export default TypingSession;

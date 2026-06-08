@@ -13,6 +13,7 @@ import {
 } from "chart.js";
 import { AuthContext } from "../../context/AuthContext";
 import axios from "axios";
+import ProfileUpload from "../ui/ProfileUpload";
 
 // Register the necessary components for Chart.js
 ChartJS.register(
@@ -140,11 +141,14 @@ const Dashboard = () => {
         }`}
       >
         {/* Profile Section */}
-        <div className="mb-8">
+        <div className="mb-8 flex items-center justify-start gap-5">
+          <ProfileUpload />
+          <div>
           <h2 className="text-2xl font-bold text-white mb-2">
             Welcome, {userInfo.username}!
           </h2>
           <p className="text-gray-400">{userInfo.email}</p>
+          </div>
         </div>
 
         {/* WPM Graph Section */}
