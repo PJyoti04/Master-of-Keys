@@ -124,7 +124,7 @@ export const uploadImage = async (
 
   const { signature, expire, token, publicKey } = await authenticator();
 
-  console.log(file,signature,expire,publicKey);
+  // console.log(file,signature,expire,publicKey);
 
   const result = await upload({
     file,
@@ -144,7 +144,7 @@ export const uploadImage = async (
       onProgress((event.loaded / event.total) * 100);
     },
   });
-  console.log(result);
+  // console.log(result);
   return result;
 
   // return {

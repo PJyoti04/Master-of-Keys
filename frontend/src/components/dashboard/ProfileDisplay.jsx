@@ -142,7 +142,7 @@ const Dashboard = () => {
       >
         {/* Profile Section */}
         <div className="mb-8 flex items-center justify-start gap-5">
-          <ProfileUpload />
+          {/* <ProfileUpload /> */}
           <div>
           <h2 className="text-2xl font-bold text-white mb-2">
             Welcome, {userInfo.username}!
