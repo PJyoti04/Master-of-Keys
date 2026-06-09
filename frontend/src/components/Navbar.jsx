@@ -1,16 +1,13 @@
 import { useContext } from "react";
-import axios from 'axios';
+import axios from "axios";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { AuthContext } from '../context/AuthContext'
-
+import { AuthContext } from "../context/AuthContext";
 
 axios.defaults.withCredentials = true; //to include cookies in requests
 
 const Navbar = () => {
-  const {user,userInitial} = useContext(AuthContext);
+  const { user, userInfo, userInitial } = useContext(AuthContext);
   const nav = useNavigate();
-
-
 
   return (
     <>
@@ -83,12 +80,24 @@ const Navbar = () => {
           ) : (
             <div className="flex items-center gap-2">
               <div
-              onClick={() => nav('/dashboard')}
-               className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold cursor-pointer">
-                {userInitial}
+                onClick={() => nav("/dashboard")}
+                className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold cursor-pointer"
+              >
+                {/* {userInfo?.profileAvatar ? userInfo?.profileAvatar : userInitial} */}
+                {userInfo?.profileAvatar ? (
+                  <img
+                    src={userInfo?.profileAvatar}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-4xl font-bold text-gray-500">
+                    {userInitial}
+                  </div>
+                )}
               </div>
               {/* <button onClick={handleLogout} className="text-white"> */}
-                {/* Log Out
+              {/* Log Out
               </button> */}
             </div>
           )}

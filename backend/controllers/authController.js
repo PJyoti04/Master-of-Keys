@@ -78,7 +78,8 @@ const getCurrentUser = async (req, res) => {
     const initial = req.user.username?.charAt(0).toUpperCase() || "";
     const info = {
       username: req.user.username,
-      email: req.user.email
+      email: req.user.email,
+      profileAvatar: req.user.profile.avatarUrl
     };
     res.json({ initial , info});
   } catch (error) {

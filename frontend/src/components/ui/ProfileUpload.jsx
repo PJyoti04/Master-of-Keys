@@ -1,20 +1,49 @@
 import { useContext, useRef, useState } from "react";
 import { Pencil, Eye, Upload } from "lucide-react";
 import { AuthContext } from "../../context/AuthContext";
+import { uploadImage } from "../../utils/imageKit";
+import api from "../../utils/api";
 
 export default function ProfileUpload() {
-  const { user, userInitial } = useContext(AuthContext);
+  const { userInfo, userInitial } = useContext(AuthContext);
   const [image, setImage] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const fileInputRef = useRef(null);
 
-  const handleFileChange = (e) => {
+  // const handleFileChange = (e) => {
+  //   const file = e.target.files?.[0];
+  //   if (!file) return;
+
+  //   setImage(URL.createObjectURL(file));
+  // };
+
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
+
     if (!file) return;
 
-    setImage(URL.createObjectURL(file));
+    try {
+      const uploaded = await uploadImage(file, userInfo, setUploadProgress);
+
+      // Save metadata to DB
+      const res = await api.patch("upload/profile/avatar", {
+        avatarUrl: uploaded.url,
+        fileId: uploaded.fileId,
+      });
+
+      setImage(uploaded.url);
+      // console.log(uploaded);
+
+      // Save URL in your database
+      // await axios.put("/api/user/profile", {
+      //   profilePic: uploaded.url,
+      // });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleUpdatePhoto = () => {
@@ -25,7 +54,7 @@ export default function ProfileUpload() {
   const handleViewPhoto = () => {
     setShowMenu(false);
 
-    if (image) {
+    if (image || userInfo?.profileAvatar) {
       setShowPreview(true);
     }
   };
@@ -38,9 +67,9 @@ export default function ProfileUpload() {
           onClick={() => setShowMenu((prev) => !prev)}
           className="relative h-28 w-28 cursor-pointer overflow-hidden rounded-full border-4 border-gray-200 bg-gray-100 shadow-md"
         >
-          {image ? (
+          {image || userInfo?.profileAvatar  ? (
             <img
-              src={image}
+              src={image || userInfo?.profileAvatar}
               alt="Profile"
               className="h-full w-full object-cover"
             />
@@ -65,10 +94,10 @@ export default function ProfileUpload() {
           <div className="absolute left-1/2 top-full z-20 mt-8 w-56 -translate-x-1/2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
             <button
               onClick={handleViewPhoto}
-              disabled={!image}
+              disabled={!image && !userInfo?.profileAvatar}
               className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition
                 ${
-                  image
+                  (image || userInfo?.profileAvatar)
                     ? "hover:bg-gray-100 text-gray-700"
                     : "cursor-not-allowed text-gray-400"
                 }`}
@@ -98,7 +127,7 @@ export default function ProfileUpload() {
       </div>
 
       {/* Preview Modal */}
-      {showPreview && image && (
+      {showPreview && (image || userInfo?.profileAvatar) && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
           onClick={() => setShowPreview(false)}
@@ -112,7 +141,7 @@ export default function ProfileUpload() {
             </button>
 
             <img
-              src={image}
+              src={image || userInfo?.profileAvatar}
               alt="Profile Preview"
               className="max-h-[80vh] max-w-[90vw] rounded-2xl object-cover shadow-2xl"
             />

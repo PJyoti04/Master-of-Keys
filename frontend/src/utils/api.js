@@ -11,7 +11,7 @@ const api = axios.create({
   },
 });
 
-export default apiClient;
+export default api;
 
 // Add a request interceptor to automatically attach JWT Auth Tokens
 // api.interceptors.request.use(
