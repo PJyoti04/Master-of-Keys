@@ -1,12 +1,50 @@
 import TypingSession from "../models/TypingSession.js";
 
 const saveSession = async (req, res) => {
-  const { wpm, accuracy, text } = req.body;
   try {
-    const session = await TypingSession.create({ userId: req.user.id, wpm, accuracy, text });
-    res.status(201).json(session);
+    const {
+      wpm,
+      accuracy,
+      text,
+      correctCharacters,
+      incorrectCharacters,
+      backspaceCount,
+      score,
+      penalty,
+      completionPercentage,
+      typedText,
+      graphData,
+    } = req.body;
+
+    const session = await TypingSession.create({
+      userId: req.user.id,
+
+      wpm,
+      accuracy,
+      text,
+
+      correctCharacters,
+      incorrectCharacters,
+      backspaceCount,
+      score,
+      penalty,
+      completionPercentage,
+      typedText,
+      graphData,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Session saved successfully",
+      session,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Save Session Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 

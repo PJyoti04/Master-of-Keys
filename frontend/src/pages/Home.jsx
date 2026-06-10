@@ -2,6 +2,7 @@ import React from "react";
 import "../App.css";
 import { Link } from "react-router-dom";
 import Features from "../components/Features"
+import Footer from "../components/Footer";
 const Home = () => {
   return (
     <>
@@ -28,6 +29,7 @@ const Home = () => {
         </div>
       </div>
       <Features />
+      <Footer />
     </>
   );
 };

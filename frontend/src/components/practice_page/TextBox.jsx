@@ -1,230 +1,376 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../../App.css";
 import axios from "axios";
-import {useNavigate} from 'react-router-dom'
+import ResultModal from "./ResultModal";
 
-export default function TextBox({ isFullscreen,timeLeft,setTimeLeft }) {
-  // The text to be typed
-  const sampleText =
-    "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro ea voluptates nihil error amet, accusamus excepturi, quam repellat rem corporis illo dolores praesentium unde iste repudiandae eaque at, ducimus eum! lorem Lorem ipsum dolor sit, amet consectetur adipisicing elit. Sit earum harum quas dolorem maxime laudantium exercitationem! In cumque voluptatum sint, ab dignissimos rem eaque, hic totam ratione sequi velit doloremque.";
+const INITIAL_TIME = 60;
 
-  // State variables
-  const [currentPosition, setCurrentPosition] = useState(0);
-  const [incorrectIndices, setIncorrectIndices] = useState(new Set());
-  const [mistakes, setMistakes] = useState(0);
+const sampleText =
+  "Technology has transformed the way people communicate, learn, and work. Every day, millions of users rely on computers and mobile devices to access information, connect with others, and complete important tasks. Developing strong typing skills can significantly improve productivity and reduce the time required to perform routine activities. Consistent practice helps increase typing speed, improve accuracy, and build confidence when working with digital tools. Whether you are a student, software developer, writer, or business professional, efficient typing remains a valuable skill in today's fast-paced world.";
+
+export default function TextBox({ isFullscreen, timeLeft, setTimeLeft }) {
+  const [typedChars, setTypedChars] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [startTime, setStartTime] = useState(null);
-  const [wpm, setWpm] = useState(0);
-  const [accuracy, setAccuracy] = useState(100);
-  const [score, setScore] = useState(0);
-  const [penalty, setPenalty] = useState(0);
-  // const [timeLeft, setTimeLeft] = useState(60);
   const [timerActive, setTimerActive] = useState(false);
+  const [backspaceCount, setBackspaceCount] = useState(0);
+  const [totalMistakes, setTotalMistakes] = useState(0);
+  const [testEnded, setTestEnded] = useState(false);
+  const [graphData, setGraphData] = useState([]);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
+  const [showResultModal, setShowResultModal] = useState(false);
 
-  const navigate = useNavigate();
-
-  // Reference to keep track of the text container
   const textBoxRef = useRef(null);
   const cursorRef = useRef(null);
 
-  // Start the test when the first key is pressed
-  const startTest = () => {
-    if (!isTyping) {
-      setIsTyping(true);
-      setStartTime(Date.now());
-      setTimerActive(true);
-    }
-  };
+  const hasSentSessionData = useRef(false);
+  const testEndedRef = useRef(false);
+  const isTypingRef = useRef(false);
+  const timerActiveRef = useRef(false);
+  const startTimeRef = useRef(null);
 
-  // Timer effect
-  const hasSentSessionData = React.useRef(false);
+  const correctCountRef = useRef(0);
+  const wrongCountRef = useRef(0);
+  const backspaceCountRef = useRef(0);
+  const latestStatsRef = useRef(null);
+  const latestGraphDataRef = useRef([]);
+
+  const currentPosition = typedChars.length;
+  const typedText = typedChars.join("");
+
+  const stats = useMemo(() => {
+    const correctCharacters = typedChars.filter(
+      (char, index) => char === sampleText[index]
+    ).length;
+
+    const incorrectCharacters = typedChars.length - correctCharacters;
+
+    const accuracy =
+      typedChars.length > 0
+        ? Math.round((correctCharacters / typedChars.length) * 100)
+        : 100;
+
+    const elapsedMinutes = startTime
+      ? Math.max((Date.now() - startTime) / 60000, 1 / 60)
+      : 0;
+
+    const wpm =
+      elapsedMinutes > 0
+        ? Math.round(correctCharacters / 5 / elapsedMinutes)
+        : 0;
+
+    const penalty = totalMistakes * 2;
+    const score = Math.max(0, correctCharacters - penalty);
+
+    const completionPercentage = Math.round(
+      (typedChars.length / sampleText.length) * 100
+    );
+
+    return {
+      wpm,
+      accuracy,
+      correctCharacters,
+      incorrectCharacters,
+      backspaceCount,
+      score,
+      penalty,
+      completionPercentage,
+      typedText,
+    };
+  }, [typedChars, startTime, totalMistakes, backspaceCount, typedText]);
 
   useEffect(() => {
-    let timer = null;
-    if (timerActive && timeLeft > 0) {
-      timer = setTimeout(() => {
-        setTimeLeft(timeLeft - 1);
-      }, 1000);
-    } else if (timeLeft === 0) {
-      setTimerActive(false);
-      if (!hasSentSessionData.current) {
-        sendSessionData();
-        hasSentSessionData.current = true;
-      }
-    }
-    return () => clearTimeout(timer);
-  }, [timerActive, timeLeft]);
+    latestStatsRef.current = stats;
+  }, [stats]);
 
-  // Send session data to backend
-  const sendSessionData = async () => {
+  useEffect(() => {
+    latestGraphDataRef.current = graphData;
+  }, [graphData]);
+
+  useEffect(() => {
+    correctCountRef.current = correctCount;
+    wrongCountRef.current = wrongCount;
+    backspaceCountRef.current = backspaceCount;
+  }, [correctCount, wrongCount, backspaceCount]);
+
+  const sendSessionData = useCallback(async (finalStats, finalGraphData) => {
+    if (hasSentSessionData.current) return;
+
+    hasSentSessionData.current = true;
+
+    // console.log("Sending session data...", finalStats);
+
     try {
-      const typedText = sampleText.substring(0, currentPosition);
-      const response = await axios.post("http://localhost:5000/api/user/practice", {
-        wpm,
-        accuracy,
-        text: typedText,
+      await axios.post("http://localhost:5000/api/user/practice", {
+        wpm: finalStats.wpm,
+        accuracy: finalStats.accuracy,
+        text: finalStats.typedText,
+        correctCharacters: finalStats.correctCharacters,
+        incorrectCharacters: finalStats.incorrectCharacters,
+        backspaceCount: finalStats.backspaceCount,
+        score: finalStats.score,
+        penalty: finalStats.penalty,
+        completionPercentage: finalStats.completionPercentage,
+        typedText: finalStats.typedText,
+        graphData: finalGraphData,
       });
+
+      // console.log("Session data sent successfully");
     } catch (error) {
+      hasSentSessionData.current = false;
       console.error("Failed to send session data:", error);
     }
-  };
+  }, []);
 
-  // Ensure cursor is visible by scrolling if needed
+  const endTest = useCallback(() => { 
+    if (testEndedRef.current) return;
+
+    testEndedRef.current = true;
+    timerActiveRef.current = false;
+
+    setTimerActive(false);
+    setTestEnded(true);
+    setShowResultModal(true);
+
+    sendSessionData(
+      latestStatsRef.current,
+      latestGraphDataRef.current
+    );
+  }, [sendSessionData]);
+
+  const resetTest = useCallback(() => {
+    setTypedChars([]);
+    setIsTyping(false);
+    setStartTime(null);
+    setTimerActive(false);
+    setBackspaceCount(0);
+    setTotalMistakes(0);
+    setTestEnded(false);
+    setGraphData([]);
+    setCorrectCount(0);
+    setWrongCount(0);
+    setShowResultModal(false);
+    setTimeLeft(INITIAL_TIME);
+
+    hasSentSessionData.current = false;
+    testEndedRef.current = false;
+    isTypingRef.current = false;
+    timerActiveRef.current = false;
+    startTimeRef.current = null;
+
+    correctCountRef.current = 0;
+    wrongCountRef.current = 0;
+    backspaceCountRef.current = 0;
+    latestGraphDataRef.current = [];
+
+    if (textBoxRef.current) {
+      textBoxRef.current.scrollTop = 0;
+    }
+  }, [setTimeLeft]);
+
+  useEffect(() => {
+    if (!timerActive || testEnded) return;
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          endTest();
+          return 0;
+        }
+
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timerActive, testEnded, endTest, setTimeLeft]);
+
+  useEffect(() => {
+    if (currentPosition >= sampleText.length && isTyping && !testEnded) {
+      endTest();
+    }
+  }, [currentPosition, isTyping, testEnded, endTest]);
+
+  useEffect(() => {
+    if (!timerActive || testEnded || !startTime) return;
+
+    const graphInterval = setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      const elapsedMinutes = Math.max(elapsedSeconds / 60, 1 / 60);
+
+      const currentWpm = Math.round(
+        correctCountRef.current / 5 / elapsedMinutes
+      );
+
+      setGraphData((prev) => [
+        ...prev,
+        {
+          second: elapsedSeconds,
+          wpm: currentWpm,
+          correct: correctCountRef.current,
+          wrong: wrongCountRef.current,
+          backspace: backspaceCountRef.current,
+        },
+      ]);
+    }, 1000);
+
+    return () => clearInterval(graphInterval);
+  }, [timerActive, testEnded, startTime]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (testEndedRef.current) return;
+
+      const isPrintableKey = e.key.length === 1;
+
+      if (e.code === "Space") {
+        e.preventDefault();
+      }
+
+      if (!isTypingRef.current && isPrintableKey) {
+        const now = Date.now();
+
+        isTypingRef.current = true;
+        timerActiveRef.current = true;
+        startTimeRef.current = now;
+
+        setIsTyping(true);
+        setStartTime(now);
+        setTimerActive(true);
+      }
+
+      if (e.key === "Backspace") {
+        e.preventDefault();
+
+        setTypedChars((prev) => {
+          if (prev.length === 0) return prev;
+          return prev.slice(0, -1);
+        });
+
+        setBackspaceCount((prev) => prev + 1);
+        return;
+      }
+
+      if (!isPrintableKey) return;
+
+      setTypedChars((prev) => {
+        if (prev.length >= sampleText.length) return prev;
+
+        const expectedChar = sampleText[prev.length];
+
+        if (e.key !== expectedChar) {
+          setTotalMistakes((prevMistakes) => prevMistakes + 1);
+          setWrongCount((prevWrong) => prevWrong + 1);
+        } else {
+          setCorrectCount((prevCorrect) => prevCorrect + 1);
+        }
+
+        return [...prev, e.key];
+      });
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   useEffect(() => {
     if (cursorRef.current && textBoxRef.current) {
       const cursorPos = cursorRef.current.getBoundingClientRect();
       const container = textBoxRef.current.getBoundingClientRect();
 
       if (cursorPos.bottom > container.bottom) {
-        textBoxRef.current.scrollTop +=
-          cursorPos.bottom - container.bottom + 40;
+        textBoxRef.current.scrollTop += cursorPos.bottom - container.bottom + 40;
       } else if (cursorPos.top < container.top) {
         textBoxRef.current.scrollTop -= container.top - cursorPos.top + 20;
       }
     }
   }, [currentPosition]);
 
-  // Handle key press events
-  useEffect(() => {
-    const handleKeyPress = (e) => {
-      // Special case for spacebar to prevent scrolling
-      if (e.code === "Space") {
-        e.preventDefault();
-      }
+  const renderCharacter = (char, index) => {
+    const typedChar = typedChars[index];
+    const isCursor = index === currentPosition;
+    const isTyped = index < currentPosition;
+    const isCorrect = typedChar === char;
 
-      // Start test if first key press
-      if (!isTyping) {
-        startTest();
-      }
+    let charClass = "";
 
-      // Only process key presses if timer is active
-      if (!timerActive) {
-        return;
-      }
+    if (isTyped) {
+      charClass = isCorrect ? "text-green-500" : "text-red-500";
+    }
 
-      // Get the expected character at the current position
-      const expectedChar = sampleText[currentPosition];
-      const typedChar = e.key;
+    const visibleChar =
+      char === " " ? (
+        <span className="inline-block w-[1.5ch] opacity-30"></span>
+      ) : (
+        char
+      );
 
-      // Only proceed if the current position is within the text
-      if (currentPosition < sampleText.length) {
-        // Check if the typed character matches the expected one
-        if (typedChar === expectedChar) {
-          // Correct typing - move cursor forward
-          setCurrentPosition(currentPosition + 1);
+    if (isCursor) {
+      return (
+        <span key={index} ref={cursorRef} className="relative inline-block">
+          <span className={charClass}>{visibleChar}</span>
+          <span className="absolute left-0 top-0 h-full w-[2px] bg-orange-500 animate-blink" />
+        </span>
+      );
+    }
 
-          // Update score
-          setScore((prevScore) => prevScore + 1);
-        } else {
-          // Incorrect typing - only if it's a printable character
-          if (typedChar.length === 1 || typedChar === " ") {
-            // Add current position to incorrect indices
-            const newIncorrectIndices = new Set(incorrectIndices);
-            newIncorrectIndices.add(currentPosition);
-            setIncorrectIndices(newIncorrectIndices);
+    return (
+      <span key={index} className={charClass}>
+        {visibleChar}
+      </span>
+    );
+  };
 
-            setMistakes(mistakes + 1);
+  const renderWords = () => {
+    const tokens = sampleText.match(/\S+\s*/g) || [];
+    let charIndex = 0;
 
-            // Apply penalty to score
-            const newPenalty = 2; // Each mistake costs 2 points
-            setPenalty((prevPenalty) => prevPenalty + newPenalty);
-            setScore((prevScore) => Math.max(0, prevScore - newPenalty));
-          }
-        }
+    return tokens.map((token, wordIndex) => {
+      const wordChars = token.split("");
+      const startIndex = charIndex;
+      charIndex += wordChars.length;
 
-        // Calculate WPM and accuracy if typing has started
-        if (startTime) {
-          const timeElapsed = (Date.now() - startTime) / 60000; // in minutes
-          const wordsTyped = currentPosition / 5; // 5 characters = 1 word standard
-          const newWpm = Math.round(wordsTyped / timeElapsed);
-          setWpm(newWpm > 0 ? newWpm : 0);
-
-          const totalAttempts = currentPosition + mistakes;
-          const newAccuracy =
-            totalAttempts > 0
-              ? Math.round(((currentPosition - mistakes) / totalAttempts) * 100)
-              : 100;
-          setAccuracy(newAccuracy > 0 ? newAccuracy : 0);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyPress);
-    return () => {
-      window.removeEventListener("keydown", handleKeyPress);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    currentPosition,
-    isTyping,
-    mistakes,
-    incorrectIndices,
-    sampleText,
-    startTime,
-    timerActive,
-  ]);
+      return (
+        <span key={wordIndex} className="inline-block whitespace-nowrap">
+          {wordChars.map((char, localIndex) =>
+            renderCharacter(char, startIndex + localIndex)
+          )}
+        </span>
+      );
+    });
+  };
 
   return (
     <>
-      <div className="stats flex justify-around px-10 py-2 text-white bg-gray-800 rounded-t-lg">
-        {/* <div>Time Left: <span className="font-bold">{timeLeft}s</span></div> */}
-        <div>WPM: <span className="font-bold">{wpm} |</span></div>
-        <div>Accuracy: <span className="font-bold"> {accuracy}% |</span></div>
-        <div>Score: <span className="font-bold">{score} |</span></div>
-        <div>Mistakes: <span className="font-bold text-red-400">{mistakes} |</span></div>
-        <div>Penalty: <span className="font-bold text-red-400">-{penalty }</span></div>
-      </div>
-
       <div
         ref={textBoxRef}
-        className={`scrollbar-hidden text-box w-[80%] bg-[#00000039] text-2xl/9 font-medium ${
+        className={`scrollbar-hidden text-box w-[80%] text-2xl/9 font-medium ${
           isFullscreen ? "h-[300px]" : "h-[200px]"
-        } p-5 rounded-2xl m-[30px] mt-0 overflow-y-scroll relative tracking-wider leading-loose`}
+        } p-3 rounded-2xl m-[30px] mt-0 overflow-y-scroll relative tracking-wider leading-loose text-gray-400`}
         style={{ overflowY: "scroll", overflowX: "hidden" }}
       >
-        <div className="relative">
-          {sampleText.split("").map((char, index) => {
-            // Determine character styling based on typing status
-            let charClass = "";
+        <div className="relative text-center">
+          {renderWords()}
 
-            if (index === currentPosition) {
-              return (
-                <span key={index} ref={cursorRef} className="relative">
-                  <span className="relative inline-block">
-                    {char === ' ' ? (
-                      <span className="inline-block w-[1.5ch] opacity-30">_</span>
-                    ) : (
-                      char
-                    )}
-                    <span className="absolute left-0 top-0 h-full w-[2px] bg-orange-500 animate-blink" />
-                  </span>
-                </span>
-              );
-            } else if (index < currentPosition) {
-              // Already typed characters
-              charClass = incorrectIndices.has(index)
-                ? "text-red-500"
-                : "text-green-500";
-            }
-
-            // Show visible space character
-            if (char === " ") {
-              return (
-                <span key={index} className={`${charClass}`}>
-                  <span className="inline-block w-[1.5ch] opacity-30">_</span>
-                </span>
-              );
-            }
-
-            // Regular characters
-            return (
-              <span key={index} className={charClass}>
-                {char}
-              </span>
-            );
-          })}
+          {currentPosition === sampleText.length && (
+            <span ref={cursorRef} className="relative inline-block">
+              <span className="absolute left-0 top-0 h-full w-[2px] bg-orange-500 animate-blink" />
+            </span>
+          )}
         </div>
       </div>
+
+      {showResultModal && (
+        <ResultModal
+          stats={stats}
+          graphData={graphData}
+          onRetry={resetTest}
+        />
+      )}
     </>
   );
 }

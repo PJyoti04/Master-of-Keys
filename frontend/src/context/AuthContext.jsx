@@ -10,6 +10,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState("");
   const [userInfo,setUserInfo] = useState({});
   const [userInitial, setUserInitial] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const fetchUser = async () => {
     try {
@@ -20,6 +21,8 @@ export const AuthProvider = ({ children }) => {
     // eslint-disable-next-line no-unused-vars
     } catch (err) {
       setUser("");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -28,7 +31,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, setUser, userInitial, setUserInitial, fetchUser, userInfo, setUserInfo }}>
+    <AuthContext.Provider value={{ user, setUser, userInitial, setUserInitial, fetchUser, userInfo, setUserInfo, loading }}>
       {children}
     </AuthContext.Provider>
   );
