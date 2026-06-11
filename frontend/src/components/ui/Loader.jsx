@@ -20,7 +20,7 @@ export default function Loader() {
   }, []);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-black">
+    <div className="flex items-center justify-center bg-black">
       <span className="text-2xl font-semibold font-mono text-white">
         {displayText}
         <span className="animate-pulse">|</span>

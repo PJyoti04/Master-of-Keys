@@ -1,14 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../../App.css";
 import axios from "axios";
-import ResultModal from "./ResultModal";
-
-const INITIAL_TIME = 60;
 
 const sampleText =
   "Technology has transformed the way people communicate, learn, and work. Every day, millions of users rely on computers and mobile devices to access information, connect with others, and complete important tasks. Developing strong typing skills can significantly improve productivity and reduce the time required to perform routine activities. Consistent practice helps increase typing speed, improve accuracy, and build confidence when working with digital tools. Whether you are a student, software developer, writer, or business professional, efficient typing remains a valuable skill in today's fast-paced world.";
 
-export default function TextBox({ isFullscreen, timeLeft, setTimeLeft }) {
+export default function TextBox({
+  isFullscreen,
+  timeLeft,
+  setTimeLeft,
+  initialTime,
+  setLoading,
+  onSessionSaved,
+}) {
   const [typedChars, setTypedChars] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [startTime, setStartTime] = useState(null);
@@ -19,15 +23,12 @@ export default function TextBox({ isFullscreen, timeLeft, setTimeLeft }) {
   const [graphData, setGraphData] = useState([]);
   const [correctCount, setCorrectCount] = useState(0);
   const [wrongCount, setWrongCount] = useState(0);
-  const [showResultModal, setShowResultModal] = useState(false);
 
   const textBoxRef = useRef(null);
   const cursorRef = useRef(null);
 
   const hasSentSessionData = useRef(false);
   const testEndedRef = useRef(false);
-  const isTypingRef = useRef(false);
-  const timerActiveRef = useRef(false);
   const startTimeRef = useRef(null);
 
   const correctCountRef = useRef(0);
@@ -77,6 +78,7 @@ export default function TextBox({ isFullscreen, timeLeft, setTimeLeft }) {
       penalty,
       completionPercentage,
       typedText,
+      text: typedText,
     };
   }, [typedChars, startTime, totalMistakes, backspaceCount, typedText]);
 
@@ -94,80 +96,52 @@ export default function TextBox({ isFullscreen, timeLeft, setTimeLeft }) {
     backspaceCountRef.current = backspaceCount;
   }, [correctCount, wrongCount, backspaceCount]);
 
-  const sendSessionData = useCallback(async (finalStats, finalGraphData) => {
-    if (hasSentSessionData.current) return;
+  const sendSessionData = useCallback(
+    async (finalStats, finalGraphData) => {
+      if (hasSentSessionData.current) return;
 
-    hasSentSessionData.current = true;
+      hasSentSessionData.current = true;
+      setLoading(true);
 
-    // console.log("Sending session data...", finalStats);
+      // setTimeout(async () => {
 
-    try {
-      await axios.post("http://localhost:5000/api/user/practice", {
-        wpm: finalStats.wpm,
-        accuracy: finalStats.accuracy,
-        text: finalStats.typedText,
-        correctCharacters: finalStats.correctCharacters,
-        incorrectCharacters: finalStats.incorrectCharacters,
-        backspaceCount: finalStats.backspaceCount,
-        score: finalStats.score,
-        penalty: finalStats.penalty,
-        completionPercentage: finalStats.completionPercentage,
-        typedText: finalStats.typedText,
-        graphData: finalGraphData,
-      });
+      try {
+        const res = await axios.post("http://localhost:5000/api/user/practice", {
+          ...finalStats,
+          graphData: finalGraphData,
+        });
 
-      // console.log("Session data sent successfully");
-    } catch (error) {
-      hasSentSessionData.current = false;
-      console.error("Failed to send session data:", error);
-    }
-  }, []);
+        const savedSession = res.data?.session || res.data;
 
-  const endTest = useCallback(() => { 
+        onSessionSaved({
+          ...savedSession,
+          ...finalStats,
+          graphData: savedSession.graphData || finalGraphData,
+        });
+      } catch (error) {
+        hasSentSessionData.current = false;
+        testEndedRef.current = false;
+        setTestEnded(false);
+
+        console.error("Failed to send session data:", error);
+      } finally {
+        setLoading(false);
+      }
+      // },6000)
+    },
+    [setLoading, onSessionSaved]
+  );
+
+  const endTest = useCallback(() => {
     if (testEndedRef.current) return;
 
     testEndedRef.current = true;
-    timerActiveRef.current = false;
 
     setTimerActive(false);
     setTestEnded(true);
-    setShowResultModal(true);
 
-    sendSessionData(
-      latestStatsRef.current,
-      latestGraphDataRef.current
-    );
+    sendSessionData(latestStatsRef.current, latestGraphDataRef.current);
   }, [sendSessionData]);
-
-  const resetTest = useCallback(() => {
-    setTypedChars([]);
-    setIsTyping(false);
-    setStartTime(null);
-    setTimerActive(false);
-    setBackspaceCount(0);
-    setTotalMistakes(0);
-    setTestEnded(false);
-    setGraphData([]);
-    setCorrectCount(0);
-    setWrongCount(0);
-    setShowResultModal(false);
-    setTimeLeft(INITIAL_TIME);
-
-    hasSentSessionData.current = false;
-    testEndedRef.current = false;
-    isTypingRef.current = false;
-    timerActiveRef.current = false;
-    startTimeRef.current = null;
-
-    correctCountRef.current = 0;
-    wrongCountRef.current = 0;
-    backspaceCountRef.current = 0;
-    latestGraphDataRef.current = [];
-
-    if (textBoxRef.current) {
-      textBoxRef.current.scrollTop = 0;
-    }
-  }, [setTimeLeft]);
 
   useEffect(() => {
     if (!timerActive || testEnded) return;
@@ -184,7 +158,7 @@ export default function TextBox({ isFullscreen, timeLeft, setTimeLeft }) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [timerActive, testEnded, endTest, setTimeLeft]);
+  }, [timerActive, testEnded, setTimeLeft, endTest]);
 
   useEffect(() => {
     if (currentPosition >= sampleText.length && isTyping && !testEnded) {
@@ -228,16 +202,14 @@ export default function TextBox({ isFullscreen, timeLeft, setTimeLeft }) {
         e.preventDefault();
       }
 
-      if (!isTypingRef.current && isPrintableKey) {
+      if (!isTyping && isPrintableKey) {
         const now = Date.now();
-
-        isTypingRef.current = true;
-        timerActiveRef.current = true;
-        startTimeRef.current = now;
 
         setIsTyping(true);
         setStartTime(now);
         setTimerActive(true);
+
+        startTimeRef.current = now;
       }
 
       if (e.key === "Backspace") {
@@ -260,10 +232,10 @@ export default function TextBox({ isFullscreen, timeLeft, setTimeLeft }) {
         const expectedChar = sampleText[prev.length];
 
         if (e.key !== expectedChar) {
-          setTotalMistakes((prevMistakes) => prevMistakes + 1);
-          setWrongCount((prevWrong) => prevWrong + 1);
+          setTotalMistakes((prev) => prev + 1);
+          setWrongCount((prev) => prev + 1);
         } else {
-          setCorrectCount((prevCorrect) => prevCorrect + 1);
+          setCorrectCount((prev) => prev + 1);
         }
 
         return [...prev, e.key];
@@ -275,7 +247,7 @@ export default function TextBox({ isFullscreen, timeLeft, setTimeLeft }) {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [isTyping]);
 
   useEffect(() => {
     if (cursorRef.current && textBoxRef.current) {
@@ -345,32 +317,22 @@ export default function TextBox({ isFullscreen, timeLeft, setTimeLeft }) {
   };
 
   return (
-    <>
-      <div
-        ref={textBoxRef}
-        className={`scrollbar-hidden text-box w-[80%] text-2xl/9 font-medium ${
-          isFullscreen ? "h-[300px]" : "h-[200px]"
-        } p-3 rounded-2xl m-[30px] mt-0 overflow-y-scroll relative tracking-wider leading-loose text-gray-400`}
-        style={{ overflowY: "scroll", overflowX: "hidden" }}
-      >
-        <div className="relative text-center">
-          {renderWords()}
+    <div
+      ref={textBoxRef}
+      className={`scrollbar-hidden text-box w-[80%] text-2xl/9 font-medium ${
+        isFullscreen ? "h-[300px]" : "h-[200px]"
+      } p-3 rounded-2xl m-[30px] mt-0 overflow-y-scroll relative tracking-wider leading-loose text-gray-400`}
+      style={{ overflowY: "scroll", overflowX: "hidden" }}
+    >
+      <div className="relative text-center">
+        {renderWords()}
 
-          {currentPosition === sampleText.length && (
-            <span ref={cursorRef} className="relative inline-block">
-              <span className="absolute left-0 top-0 h-full w-[2px] bg-orange-500 animate-blink" />
-            </span>
-          )}
-        </div>
+        {currentPosition === sampleText.length && (
+          <span ref={cursorRef} className="relative inline-block">
+            <span className="absolute left-0 top-0 h-full w-[2px] bg-orange-500 animate-blink" />
+          </span>
+        )}
       </div>
-
-      {showResultModal && (
-        <ResultModal
-          stats={stats}
-          graphData={graphData}
-          onRetry={resetTest}
-        />
-      )}
-    </>
+    </div>
   );
 }
