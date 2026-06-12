@@ -103,7 +103,7 @@ const Dashboard = () => {
           <p className="font-bold">{userInfo.username}</p>
         </div>
         <div className="space-y-4 p-6 h-[calc(100vh-72px)] relative flex flex-col items-center ">
-          <Link to="reset_password">
+          <Link to="reset-password">
             <button
               className="w-full text-white hover:text-[orange] hover:underline"
             >

@@ -19,7 +19,7 @@ function ProtectedRoute() {
   const { user, loading } = useContext(AuthContext);
 
   if(loading) {
-    return <Loader />
+    return <div className="h-[calc(100vh-80px)] flex items-center justify-center bg-black"><Loader /></div>
   }
 
   return user ? <Outlet /> : <Navigate to="/login" replace />;
@@ -29,7 +29,7 @@ function PublicRoute() {
   const { user, loading } = useContext(AuthContext);
 
   if(loading) {
-    return <Loader />
+    return <div className="h-[calc(100vh-80px)] flex items-center bg-black"><Loader /></div>
   }
 
   return user ? <Navigate to="/" replace /> : <Outlet />;
@@ -43,6 +43,10 @@ const router = createBrowserRouter([
       {
         index: true,
         element: <Home />,
+      },
+      {
+        path: "practice",
+        element: <Practice />,
       },
       {
         element: <PublicRoute />,
@@ -62,10 +66,6 @@ const router = createBrowserRouter([
       {
         element: <ProtectedRoute />,
         children: [
-          {
-            path: "practice",
-            element: <Practice />,
-          },
           {
             path: "multiplayer",
             element: <Multiplayer />,

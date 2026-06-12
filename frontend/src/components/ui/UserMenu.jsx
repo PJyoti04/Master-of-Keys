@@ -1,9 +1,23 @@
 import { LayoutDashboard, LogOut, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ProfileUpload from "./ProfileUpload";
+import api from "../../utils/api";
+import { useContext } from "react";
+import { AuthContext } from "../../context/AuthContext";
 
 export const UserMenu = ({ userInfo, userInitial, onClose }) => {
   const nav = useNavigate();
+  const { fetchUser } = useContext(AuthContext);
+
+  const handleLogout = async () => {
+    try {
+      await api.post("auth/logout");
+      await fetchUser();
+      nav("/");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   return (
     <div
@@ -63,7 +77,7 @@ export const UserMenu = ({ userInfo, userInitial, onClose }) => {
         </button>
 
         <button
-          //   onClick={handleLogout}
+          onClick={handleLogout}
           className="w-full flex items-center gap-3 px-5 py-4 text-red-400 hover:bg-red-500/10"
         >
           <LogOut size={18} />
