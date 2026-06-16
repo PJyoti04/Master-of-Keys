@@ -1,11 +1,53 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import api from "../utils/api";
+import { toast } from "react-toastify";
+
 import { FaPlus } from "react-icons/fa6";
 import { HiUsers } from "react-icons/hi2";
 
 function MultiplayerHome() {
+  const navigate = useNavigate();
+
   const [showJoinInput, setShowJoinInput] = useState(false);
   const [roomId, setRoomId] = useState("");
+  const [joining, setJoining] = useState(false);
+  // const [joinError, setJoinError] = useState("");
+
+  const handleJoinRoom = async () => {
+  if (!roomId.trim()) {
+    toast.error("Please enter a room code");
+    return;
+  }
+
+  try {
+    setJoining(true);
+
+    const res = await api.post(
+      "http://localhost:5000/api/rooms/join",
+      {
+        roomCode: roomId.trim().toUpperCase(),
+      },
+      {
+        withCredentials: true,
+      }
+    );
+
+    toast.success("Joined room successfully");
+
+    navigate(
+      `/multiplayer/room/${res.data.roomCode}`
+    );
+  } catch (error) {
+    toast.error(
+      error?.response?.data?.message ||
+      "Unable to join room"
+    );
+  } finally {
+    setJoining(false);
+  }
+};
+
   return (
     <div
       className="
@@ -21,7 +63,7 @@ function MultiplayerHome() {
       {/* Main dark overlay */}
       <div className="absolute inset-0 bg-black/45" />
 
-      {/* Smooth blend from navbar color */}
+      {/* Top Blend */}
       <div
         className="
           absolute
@@ -36,7 +78,7 @@ function MultiplayerHome() {
         "
       />
 
-      {/* Optional bottom fade */}
+      {/* Bottom Blend */}
       <div
         className="
           absolute
@@ -59,10 +101,6 @@ function MultiplayerHome() {
             p-10
             rounded-3xl
             pt-0
-            // borde border-whie/10
-            // bg-white/
-            // backdrop-blur-m
-            // shadw-[0_0_50px_rgba(0,0,0,0.45)]
           "
         >
           <p className="uppercase italic tracking-[0.4em] text-orange-400 text-sm mb-4">
@@ -78,7 +116,9 @@ function MultiplayerHome() {
           </h1>
 
           <h2
-            style={{ fontFamily: "Lobster Two, sans-serif" }}
+            style={{
+              fontFamily: "Lobster Two, sans-serif",
+            }}
             className="text-3xl italic font-bold text-gray-200 mb-6"
           >
             Multiplayer Mode
@@ -91,80 +131,146 @@ function MultiplayerHome() {
           </p>
 
           <div
-            className={`flex justify-center items-center ${showJoinInput ? "gap-4" : "gap-12"} mt-10`}
+            className={`flex justify-center items-center ${
+              showJoinInput ? "gap-4" : "gap-12"
+            } mt-10`}
           >
-            {/* Create Button */}
+            {/* CREATE BUTTON */}
             <Link
               to="create"
               className={`
                 flex items-center justify-center gap-2
-                font-bold
-                text-lg
-              text-white
+                font-bold text-lg text-white
                 bg-gradient-to-r
-              from-orange-500
-              to-orange-600
+                from-orange-500
+                to-orange-600
                 rounded-full
                 group
                 hover:scale-105
                 hover:shadow-[0_0_25px_rgba(249,115,22,0.5)]
-                transition-all
-                duration-200
+                transition-all duration-200
                 ${showJoinInput ? "w-14 h-14 px-0" : "px-7 py-4 min-w-36"}
               `}
             >
-              <FaPlus size={22} className="transition-transform duration-500 group-hover:rotate-90" />
+              <FaPlus
+                size={22}
+                className="transition-transform duration-500 group-hover:rotate-90"
+              />
+
               {!showJoinInput && <span>Create</span>}
             </Link>
 
-            {/* Join Flow */}
+            {/* JOIN INPUT */}
             {showJoinInput && (
-              <div className="flex items-center gap-3 animate-in fade-in duration-300">
-                {/* Input */}
-                <div className="w-72 transition-all duration-500">
-                  <input
-                    value={roomId}
-                    onChange={(e) => setRoomId(e.target.value)}
-                    placeholder="Enter Room ID"
-                    className="w-full h-14 px-5 rounded-full bg-white/10 backdrop-blur-md border border-orange-500/30 text-white outline-none placeholder:text-gray-400 focus:border-orange-500 focus:shadow-[0_0_20px_rgba(249,115,22,0.25)] transition-all"
-                  />
+              <div className="flex flex-col items-start">
+                <div className="flex items-center gap-3 animate-in fade-in duration-300">
+                  <div className="w-72 transition-all duration-500">
+                    <input
+                      value={roomId}
+                      onChange={(e) => {
+                        setRoomId(e.target.value.toUpperCase());
+
+                        // if (joinError) setJoinError("");
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleJoinRoom();
+                        }
+                      }}
+                      placeholder="Enter Room ID"
+                      className="
+                        w-full
+                        h-14
+                        px-5
+                        rounded-full
+                        bg-white/10
+                        backdrop-blur-md
+                        border
+                        border-orange-500/30
+                        text-white
+                        outline-none
+                        placeholder:text-gray-400
+                        focus:border-orange-500
+                        focus:shadow-[0_0_20px_rgba(249,115,22,0.25)]
+                        transition-all
+                      "
+                    />
+                  </div>
+
+                  {/* CLOSE */}
+                  <button
+                    onClick={() => {
+                      setShowJoinInput(false);
+                      setRoomId("");
+                      // setJoinError("");
+                    }}
+                    className="
+                      h-12
+                      w-12
+                      rounded-full
+                      bg-white/10
+                      border
+                      border-white/10
+                      flex
+                      items-center
+                      justify-center
+                      text-gray-300
+                      hover:text-white
+                      hover:bg-white/15
+                      transition-all
+                    "
+                  >
+                    ✕
+                  </button>
                 </div>
 
-                {/* Close Button */}
-                <button
-                  onClick={() => {
-                    setShowJoinInput(false);
-                    setRoomId("");
-                  }}
-                  className="h-12 w-12 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/15 transition-all duration-300"
+                {/* <p
+                  className={`text-red-400 text-sm mt-2 ml-2 h-5 transition-opacity duration-200 ${
+                    joinError ? "opacity-100" : "opacity-0"
+                  }`}
                 >
-                  ✕
-                </button>
+                  {joinError || "placeholder"}
+                </p> */}
               </div>
             )}
 
+            {/* JOIN BUTTON */}
             <button
-              onClick={() => setShowJoinInput(true)}
+              disabled={joining}
+              onClick={() => {
+                if (showJoinInput) {
+                  handleJoinRoom();
+                } else {
+                  setShowJoinInput(true);
+                }
+              }}
               className={`
-                  min-w-36
-                  px-8
-                  py-4
-                  rounded-full
-                  font-bold
-                  text-lg
+                min-w-36
+                px-8
+                py-4
+                rounded-full
+                font-bold
+                text-lg
                 text-white
-                  border
+                border
                 border-orange-500/20
                 hover:bg-orange-500/10
-                  hover:scale-105
-                  transition-all
-                  duration-300
-                  flex items-center justify-center gap-2
-                  ${showJoinInput ? "w-10 h-14 px-0 bg-orange-500" : "bg-orange-500/20"}
-                `}
+                hover:scale-105
+                transition-all
+                duration-300
+                flex
+                items-center
+                justify-center
+                gap-2
+                ${showJoinInput ? "bg-orange-500" : "bg-orange-500/20"}
+                ${joining ? "opacity-70 cursor-not-allowed" : ""}
+              `}
             >
               <HiUsers size={22} />
-              Join
+
+              <span>
+                {showJoinInput ? (joining ? "Joining..." : "Join") : "Join"}
+              </span>
             </button>
           </div>
         </div>

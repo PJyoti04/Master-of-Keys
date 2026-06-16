@@ -10,6 +10,10 @@ import MultiplayerHome from "../pages/MultiplayerHome.jsx";
 import Dashboard from "../pages/Dashboard.jsx";
 import ResetPasswordForm from "../components/ResetPasswordForm.jsx";
 import ProfileDisplay from "../components/dashboard/ProfileDisplay.jsx";
+import RoomLayout from "../pages/RoomLayout.jsx";
+import RoomLobby from "../pages/RoomLobby.jsx";
+import RacePage from "../pages/RacePage.jsx";
+import ResultPage from "../pages/ResultPage.jsx";
 
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
@@ -77,6 +81,24 @@ const router = createBrowserRouter([
               {
                 path: "create",
                 element: <CreateRoom />,
+              },
+              {
+                path: "room/:roomCode",
+                element: <RoomLayout />,
+                children: [
+                  {
+                    index: true,
+                    element: <RoomLobby />,
+                  },
+                  {
+                    path: "race",
+                    element: <RacePage />,
+                  },
+                  {
+                    path: "results",
+                    element: <ResultPage />,
+                  },
+                ],
               },
             ],
           },
