@@ -3,12 +3,13 @@ import axios from 'axios';
 
 // Create pre-configured instance
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api', // Base URL for all endpoints
+  baseURL: "http://192.168.0.57:5000/api", //'http://localhost:5000/api', // Base URL for all endpoints
   timeout: 5000,                         // Abort request if it takes longer than 5s
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
+  withCredentials: true
 });
 
 export default api;

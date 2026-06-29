@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import api from '../utils/api';
 
 axios.defaults.withCredentials = true;
 
@@ -14,7 +15,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/auth/me');
+      const res = await api.get('/auth/me');
       setUserInitial(res.data.initial);
       setUser(res.data.info.username);
       setUserInfo(res.data.info);

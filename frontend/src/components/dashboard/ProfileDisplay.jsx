@@ -14,6 +14,7 @@ import {
 import { AuthContext } from "../../context/AuthContext";
 import axios from "axios";
 import ProfileUpload from "../ui/ProfileUpload";
+import api from "../../utils/api";
 
 // Register the necessary components for Chart.js
 ChartJS.register(
@@ -36,8 +37,8 @@ const Dashboard = () => {
 
   const fetchData = async (skip = 0, limit = 10) => {
     try {
-      const res = await axios.get(
-        `http://localhost:5000/api/user/dashboard?skip=${skip}&limit=${limit}`
+      const res = await api.get(
+        `/user/dashboard?skip=${skip}&limit=${limit}`
       );
       const typingData = res.data;
       if (skip === 0) {
@@ -59,7 +60,7 @@ const Dashboard = () => {
 
   const handleLogout = async () => {
     try {
-      await axios.post("http://localhost:5000/api/auth/logout");
+      await api.post("/auth/logout");
       await fetchUser();
       navigate("/");
     } catch (error) {

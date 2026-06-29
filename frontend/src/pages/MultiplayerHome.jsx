@@ -24,7 +24,7 @@ function MultiplayerHome() {
     setJoining(true);
 
     const res = await api.post(
-      "http://localhost:5000/api/rooms/join",
+      "/rooms/join",
       {
         roomCode: roomId.trim().toUpperCase(),
       },

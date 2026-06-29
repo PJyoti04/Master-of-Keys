@@ -18,39 +18,61 @@ connectDB();
 
 const app = express();
 
-// Create HTTP Server
+const CLIENT_URL = process.env.CLIENT_URL || "*" || "http://localhost:5173";
+const PORT = process.env.PORT || 5000;
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://192.168.0.57:5173", // frontend running on another PC
+];
+
 const server = createServer(app);
 
-// Create Socket.IO Server
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+}));
+
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     credentials: true,
   },
 });
 
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-  })
-);
+
+// const io = new Server(server, {
+//   cors: {
+//     origin: "*",
+//     credentials: true,
+//   },
+// });
+
+// app.use(
+//   cors({
+//     origin: "*",
+//     credentials: true,
+//   })
+// );
 
 app.use(cookieParser());
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/user", typingRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/rooms", roomRoutes);
 
-app.use(errorHandler);
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Server is running",
+  });
+});
 
-// Initialize Socket Events
 initializeSocket(io);
 
-const PORT = process.env.PORT || 5000;
+app.use(errorHandler);
 
-server.listen(PORT, () => {
+server.listen(PORT,"0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });

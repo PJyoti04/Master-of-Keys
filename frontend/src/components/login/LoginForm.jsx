@@ -6,6 +6,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { Eye, EyeOff } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import api from "../../utils/api";
 
 const initialState = {
   identifier: "",
@@ -62,8 +63,8 @@ const LoginForm = () => {
       return;
     }
     try {
-      const response = await axios.post(
-        "http://localhost:5000/api/auth/login",
+      const response = await api.post(
+        "/auth/login",
         state,
       );
       setMessage({ type: response.data.type, text: response.data.message });

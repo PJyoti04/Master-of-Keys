@@ -5,6 +5,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { Eye, EyeOff } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import api from "../../utils/api";
 
 const initialState = {
   username: "",
@@ -122,8 +123,8 @@ const SignupForm = () => {
       return;
     }
     try {
-      const response = await axios.post(
-        "http://localhost:5000/api/auth/register",
+      const response = await api.post(
+        "/auth/register",
         state,
       );
       // console.log(response.data);

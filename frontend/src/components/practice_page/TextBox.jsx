@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../../App.css";
 import axios from "axios";
+import api from "../../utils/api";
 
 const sampleText =
   "Technology has transformed the way people communicate, learn, and work. Every day, millions of users rely on computers and mobile devices to access information, connect with others, and complete important tasks. Developing strong typing skills can significantly improve productivity and reduce the time required to perform routine activities. Consistent practice helps increase typing speed, improve accuracy, and build confidence when working with digital tools. Whether you are a student, software developer, writer, or business professional, efficient typing remains a valuable skill in today's fast-paced world.";
@@ -106,7 +107,7 @@ export default function TextBox({
       // setTimeout(async () => {
 
       try {
-        const res = await axios.post("http://localhost:5000/api/user/practice", {
+        const res = await api.post("/user/practice", {
           ...finalStats,
           graphData: finalGraphData,
         });

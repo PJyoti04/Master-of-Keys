@@ -23,19 +23,19 @@ function CreateRoom() {
 
     try {
       const res = await api.post(
-        "http://localhost:5000/api/rooms/create",
+        "/rooms/create",
         formData,
         {
           withCredentials: true,
         }
       );
 
-      navigate(`/multiplayer/room/${res.data.roomCode}`);
+      navigate(`/multiplayer/room/${res.data.room.roomCode}`);
 
-      console.log(res.data);
+      // console.log(res.data);
 
       alert(
-        `Room Created! Code: ${res.data.roomCode}`
+        `Room Created! Code: ${res.data.room.roomCode}`
       );
     } catch (err) {
       console.error(err);
