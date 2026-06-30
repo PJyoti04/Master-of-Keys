@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import api from "../utils/api";
 
 const ResetPasswordForm = () => {
   const [step, setStep] = useState(1); // 1: send OTP, 2: verify OTP, 3: reset password
@@ -22,7 +23,7 @@ const ResetPasswordForm = () => {
     setError("");
     setMessage("");
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/sendotp");
+      const res = await api.post("/auth/sendotp");
       setMessage(res.data.message);
       setStep(2);
     } catch (err) {
@@ -37,7 +38,7 @@ const ResetPasswordForm = () => {
     setError("");
     setMessage("");
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/verify", { otp });
+      const res = await api.post("/auth/verify", { otp });
       setMessage(res.data.message);
       setStep(3);
     } catch (err) {
@@ -57,7 +58,7 @@ const ResetPasswordForm = () => {
     setError("");
     setMessage("");
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/resetpass", {
+      const res = await api.post("/auth/resetpass", {
         newPassword,
         confirmPassword
       });

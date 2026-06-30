@@ -14,6 +14,11 @@ const playerSchema = new mongoose.Schema(
       trim: true,
     },
 
+    profilePhoto: {
+      type: String,
+      default: "",
+    },
+
     socketId: {
       type: String,
       default: null,

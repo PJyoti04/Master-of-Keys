@@ -1,7 +1,10 @@
 import Room from "../models/Room.js";
 import { generateRoomCode } from "../utils/generateRoomCode.js";
 
-const normalizeRoomCode = (roomCode) => String(roomCode || "").trim().toUpperCase();
+const normalizeRoomCode = (roomCode) =>
+  String(roomCode || "")
+    .trim()
+    .toUpperCase();
 
 const getUserMaxPlayers = (user) => {
   const isPremium =
@@ -67,7 +70,7 @@ export const createRoom = async (req, res, next) => {
     const allowedMaxPlayers = getUserMaxPlayers(req.user);
     const finalMaxPlayers = Math.min(
       Number(maxPlayers) || allowedMaxPlayers,
-      allowedMaxPlayers
+      allowedMaxPlayers,
     );
 
     const finalDuration = Math.min(Math.max(Number(duration) || 60, 15), 86400);
@@ -80,6 +83,7 @@ export const createRoom = async (req, res, next) => {
         {
           user: req.user.id,
           username: req.user.username || req.user.name || "Player",
+          profilePhoto: req.user.profile?.avatarUrl,
           isConnected: false,
         },
       ],
@@ -134,7 +138,7 @@ export const joinRoom = async (req, res, next) => {
     }
 
     const alreadyJoined = room.players.some(
-      (player) => player.user.toString() === req.user.id
+      (player) => player.user.toString() === req.user.id,
     );
 
     if (!alreadyJoined) {
@@ -145,6 +149,7 @@ export const joinRoom = async (req, res, next) => {
       room.players.push({
         user: req.user.id,
         username: req.user.username || req.user.name || "Player",
+        profilePhoto: req.user.profile?.avatarUrl,
       });
 
       await room.save();
@@ -177,7 +182,7 @@ export const leaveRoom = async (req, res, next) => {
     }
 
     room.players = room.players.filter(
-      (player) => player.user.toString() !== req.user.id
+      (player) => player.user.toString() !== req.user.id,
     );
 
     if (room.players.length === 0) {

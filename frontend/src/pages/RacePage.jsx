@@ -26,12 +26,12 @@ function RacePage() {
     if (!room) return;
 
     if (room.status === "waiting") {
-      navigate(`/multiplayer/room/${room.roomCode}`);
+      navigate(`/multiplayer/room/${room.roomCode}`, {replace: true});
       return;
     }
 
     if (room.status === "completed") {
-      navigate(`/multiplayer/room/${room.roomCode}/results`);
+      navigate(`/multiplayer/room/${room.roomCode}/results`, { replace: true });
       return;
     }
 

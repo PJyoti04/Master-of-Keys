@@ -5,7 +5,9 @@ import Room from "../models/Room.js";
 const activeTimers = new Map();
 
 const normalizeRoomCode = (roomCode) =>
-  String(roomCode || "").trim().toUpperCase();
+  String(roomCode || "")
+    .trim()
+    .toUpperCase();
 
 const getTokenFromSocket = (socket) => {
   const cookies = cookie.parse(socket.handshake.headers.cookie || "");
@@ -35,6 +37,7 @@ const buildLeaderboard = (room) => {
       rank: index + 1,
       userId: player.user.toString(),
       username: player.username,
+      profilePhoto: player.profilePhoto || "",
       progress: player.progress || 0,
       wpm: player.wpm || 0,
       accuracy: player.accuracy || 0,
@@ -50,6 +53,11 @@ const sanitizeStats = (stats = {}) => ({
   correctChars: Math.max(Number(stats.correctChars) || 0, 0),
   wrongChars: Math.max(Number(stats.wrongChars) || 0, 0),
 });
+
+const isHostPlayer = (room, player, index) =>
+  index === 0 ||
+  player.user.toString() === room.createdBy.toString() ||
+  player.username === room.createdByUsername;
 
 const completeRace = async (io, roomCode) => {
   const room = await Room.findOne({ roomCode });
@@ -121,7 +129,7 @@ export const initializeSocket = (io) => {
         }
 
         const player = room.players.find(
-          (p) => p.user.toString() === String(userId)
+          (p) => p.user.toString() === String(userId),
         );
 
         if (!player) {
@@ -139,6 +147,14 @@ export const initializeSocket = (io) => {
         player.socketId = socket.id;
         player.isConnected = true;
 
+        const playerIndex = room.players.findIndex(
+          (p) => p.user.toString() === String(userId),
+        );
+
+        if (isHostPlayer(room, player, playerIndex)) {
+          player.isReady = true;
+        }
+
         await room.save();
 
         io.to(roomCode).emit("room-updated", room);
@@ -149,32 +165,126 @@ export const initializeSocket = (io) => {
       }
     });
 
-    socket.on("leave-room", async (payload = {}) => {
-      const roomCode = normalizeRoomCode(payload.roomCode || socket.data.roomCode);
-      const userId = socket.user.id;
+    socket.on("leave-room", async (payload = {}, callback) => {
+      try {
+        const roomCode = normalizeRoomCode(
+          payload.roomCode || socket.data.roomCode,
+        );
 
-      if (!roomCode) return;
+        const userId = socket.user.id;
 
-      socket.leave(roomCode);
+        if (!roomCode) {
+          return callback?.({
+            success: false,
+            message: "Room code is required.",
+          });
+        }
 
-      const room = await Room.findOne({ roomCode });
-      if (!room) return;
+        socket.leave(roomCode);
 
-      const player = room.players.find(
-        (p) => p.user.toString() === String(userId)
-      );
+        const room = await Room.findOne({ roomCode });
 
-      if (player) {
-        player.socketId = null;
-        player.isConnected = false;
+        if (!room) {
+          return callback?.({
+            success: false,
+            message: "Room not found.",
+          });
+        }
+
+        const playerExists = room.players.some(
+          (p) => p.user.toString() === String(userId),
+        );
+
+        if (!playerExists) {
+          return callback?.({
+            success: false,
+            message: "You are not a member of this room.",
+          });
+        }
+
+        room.players = room.players.filter(
+          (p) => p.user.toString() !== String(userId),
+        );
+
         await room.save();
-      }
 
-      io.to(roomCode).emit("room-updated", room);
+        io.to(roomCode).emit("room-updated", room);
+
+        callback?.({
+          success: true,
+          message: "Left room successfully.",
+        });
+      } catch (error) {
+        callback?.({
+          success: false,
+          message: error.message,
+        });
+      }
+    });
+
+    socket.on("cancel-room", async (payload = {}, callback) => {
+      try {
+        const roomCode = normalizeRoomCode(
+          payload.roomCode || socket.data.roomCode,
+        );
+
+        const userId = socket.user.id;
+
+        if (!roomCode) {
+          return callback?.({
+            success: false,
+            message: "Room code is required.",
+          });
+        }
+
+        const room = await Room.findOne({ roomCode });
+
+        if (!room) {
+          return callback?.({
+            success: false,
+            message: "Room not found.",
+          });
+        }
+
+        const isHost = room.createdBy.toString() === String(userId);
+
+        if (!isHost) {
+          return callback?.({
+            success: false,
+            message: "Only host can cancel this room.",
+          });
+        }
+
+        if (activeTimers.has(roomCode)) {
+          clearTimeout(activeTimers.get(roomCode));
+          activeTimers.delete(roomCode);
+        }
+
+        io.to(roomCode).emit("room-cancelled", {
+          roomCode,
+          message: "Host cancelled the room.",
+        });
+
+        await Room.deleteOne({ roomCode });
+
+        io.in(roomCode).socketsLeave(roomCode);
+
+        callback?.({
+          success: true,
+          message: "Room cancelled successfully.",
+        });
+      } catch (error) {
+        callback?.({
+          success: false,
+          message: error.message,
+        });
+      }
     });
 
     socket.on("player-ready", async (payload = {}) => {
-      const roomCode = normalizeRoomCode(payload.roomCode || socket.data.roomCode);
+      const roomCode = normalizeRoomCode(
+        payload.roomCode || socket.data.roomCode,
+      );
       const userId = socket.user.id;
 
       const room = await Room.findOne({ roomCode });
@@ -182,10 +292,21 @@ export const initializeSocket = (io) => {
       if (!room || room.status !== "waiting") return;
 
       const player = room.players.find(
-        (p) => p.user.toString() === String(userId)
+        (p) => p.user.toString() === String(userId),
       );
 
       if (!player) return;
+
+      const playerIndex = room.players.findIndex(
+        (p) => p.user.toString() === String(userId),
+      );
+
+      if (isHostPlayer(room, player, playerIndex)) {
+        player.isReady = true;
+        await room.save();
+        io.to(roomCode).emit("room-updated", room);
+        return;
+      }
 
       player.isReady = Boolean(payload.isReady);
 
@@ -193,6 +314,7 @@ export const initializeSocket = (io) => {
 
       io.to(roomCode).emit("room-updated", room);
     });
+
 
     socket.on("start-race", async (payload = {}, callback) => {
       try {
@@ -212,8 +334,15 @@ export const initializeSocket = (io) => {
           });
         }
 
+        if (room.players.length < 2) {
+          return callback?.({
+            success: false,
+            message: "At least 2 players are required to start the race.",
+          });
+        }
+
         const isMember = room.players.some(
-          (player) => player.user.toString() === String(userId)
+          (player) => player.user.toString() === String(userId),
         );
 
         if (!isMember) {
@@ -232,7 +361,10 @@ export const initializeSocket = (io) => {
           });
         }
 
-        const allPlayersReady = room.players.every((player) => player.isReady);
+        const allPlayersReady = room.players.every((player, index) => {
+          if (isHostPlayer(room, player, index)) return true;
+          return player.isReady;
+        });
 
         if (!allPlayersReady) {
           return callback?.({
@@ -287,7 +419,9 @@ export const initializeSocket = (io) => {
     });
 
     socket.on("typing-progress", async (payload = {}) => {
-      const roomCode = normalizeRoomCode(payload.roomCode || socket.data.roomCode);
+      const roomCode = normalizeRoomCode(
+        payload.roomCode || socket.data.roomCode,
+      );
       const userId = socket.user.id;
 
       const room = await Room.findOne({ roomCode });
@@ -295,7 +429,7 @@ export const initializeSocket = (io) => {
       if (!room || room.status !== "running") return;
 
       const player = room.players.find(
-        (p) => p.user.toString() === String(userId)
+        (p) => p.user.toString() === String(userId),
       );
 
       if (!player || player.finished) return;
@@ -313,6 +447,7 @@ export const initializeSocket = (io) => {
       io.to(roomCode).emit("player-progress", {
         userId: String(player.user),
         username: player.username,
+        profilePhoto: player.profilePhoto || "",
         progress: player.progress,
         wpm: player.wpm,
         accuracy: player.accuracy,
@@ -322,7 +457,9 @@ export const initializeSocket = (io) => {
     });
 
     socket.on("player-finished", async (payload = {}) => {
-      const roomCode = normalizeRoomCode(payload.roomCode || socket.data.roomCode);
+      const roomCode = normalizeRoomCode(
+        payload.roomCode || socket.data.roomCode,
+      );
       const userId = socket.user.id;
 
       const room = await Room.findOne({ roomCode });
@@ -330,7 +467,7 @@ export const initializeSocket = (io) => {
       if (!room || room.status !== "running") return;
 
       const player = room.players.find(
-        (p) => p.user.toString() === String(userId)
+        (p) => p.user.toString() === String(userId),
       );
 
       if (!player || player.finished) return;
@@ -353,6 +490,7 @@ export const initializeSocket = (io) => {
       io.to(roomCode).emit("player-finished", {
         userId: String(player.user),
         username: player.username,
+        profilePhoto: player.profilePhoto || "",
         wpm: player.wpm,
         accuracy: player.accuracy,
         finishedAt: player.finishedAt,
@@ -378,7 +516,7 @@ export const initializeSocket = (io) => {
       if (!room) return;
 
       const player = room.players.find(
-        (p) => p.user.toString() === String(userId)
+        (p) => p.user.toString() === String(userId),
       );
 
       if (player) {
