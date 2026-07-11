@@ -10,8 +10,8 @@
 import { io } from "socket.io-client";
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL
-                        // || "http://192.168.0.57:5000" 
-                        || "http://localhost:5000";
+                        || "https://master-of-keys-7b7d.vercel.app" 
+                        // || "http://localhost:5000";
 
 const socket = io(SOCKET_URL, {
   withCredentials: true,
