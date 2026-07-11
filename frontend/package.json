@@ -13,6 +13,7 @@
     "@imagekit/react": "^5.0.2",
     "axios": "^1.8.4",
     "chart.js": "^4.4.9",
+    "gsap": "^3.15.0",
     "lucide-react": "^0.503.0",
     "next-themes": "^0.4.6",
     "react": "^19.0.0",
