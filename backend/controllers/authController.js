@@ -26,9 +26,9 @@ const register = async (req, res) => {
     res
       .cookie("token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "Strict",
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        secure: true,  //process.env.NODE_ENV === "production",
+        sameSite: "None",
+        maxAge: 10 * 24 * 60 * 60 * 1000, // 10 days
       })
       .json({ message: "Signup successfull", type: "success" });
   } catch (error) {
@@ -56,7 +56,7 @@ const login = async (req, res) => {
         httpOnly: true,
         secure: true,
         sameSite: "None",
-        maxAge: 10 * 24 * 60 * 60 * 1000, // 30 days
+        maxAge: 10 * 24 * 60 * 60 * 1000, // 10 days
       })
       .json({ message: "Login successfull", type: "success" });
   } catch (error) {
@@ -65,7 +65,13 @@ const login = async (req, res) => {
 };
 
 const logout = (req, res) => {
-  res.clearCookie("token").json({ message: "Logged out successfully" });
+  res
+    .clearCookie("token", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+    })
+    .json({ message: "Logged out successfully" });
 };
 
 //Load Login status on intial loading...
