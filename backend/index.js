@@ -22,6 +22,7 @@ const CLIENT_URL = process.env.CLIENT_URL || "*" || "http://localhost:5173";
 const PORT = process.env.PORT || 5000;
 const allowedOrigins = [
   "http://localhost:5173",
+  "https://master-of-keys-zeta.vercel.app",
   "http://192.168.0.57:5173", // frontend running on another PC
 ];
 
@@ -73,6 +74,6 @@ initializeSocket(io);
 
 app.use(errorHandler);
 
-server.listen(PORT,"0.0.0.0", () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

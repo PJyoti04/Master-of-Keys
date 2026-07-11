@@ -20,10 +20,10 @@ const sendEmail = async (to,username) => {
           We're thrilled to have you on board! Master of Keys (MOK) is your personal gateway to becoming a typing maestro. Track your progress, join competitive rooms, practice daily, and level up your skills — one keystroke at a time.
         </p>
         <p style="font-size: 16px;">
-          🚀 Ready to begin? Head over to your dashboard and start your first session.
+          🚀 Ready to begin? Head over and start your first session.
         </p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="https://yourwebsite.com/dashboard" style="background-color: #3f51b5; color: #fff; padding: 12px 24px; border-radius: 5px; text-decoration: none; font-weight: bold;">
+          <a href="https://master-of-keys-zeta.vercel.app/practice" style="background-color: #3f51b5; color: #fff; padding: 12px 24px; border-radius: 5px; text-decoration: none; font-weight: bold;">
             Go to Dashboard
           </a>
         </div>
