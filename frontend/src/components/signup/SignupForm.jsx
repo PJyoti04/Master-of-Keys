@@ -343,7 +343,7 @@ const SignupForm = () => {
 
   return (
     <>
-      <div className="relative w-full max-w-[900px] overflow-hidden rounded-3xl border-white/10 bg-[#181C22] shado-[0_30px_100px_rgba(0,0,0,0.45)]">
+      <div className="relative w-full max-w-[900px] rounded-3xl border-white/10 bg-[#181C22] shado-[0_30px_100px_rgba(0,0,0,0.45)]">
         {/* Background decoration */}
         <div className="pointer-events-none absolute left-32 top-28 h-72 w-72 rounded-full bg-[#FF9100]/15 blur-[100px]" />
 

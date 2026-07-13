@@ -23,7 +23,7 @@ function ProtectedRoute() {
   const { user, loading } = useContext(AuthContext);
 
   if(loading) {
-    return <div className="h-[calc(100vh-80px)] flex items-center justify-center bg-black"><Loader /></div>
+    return <div className="h-[calc(100vh-80px)] flex items-center justify-center bg-[#181C22]"><Loader /></div>
   }
 
   return user ? <Outlet /> : <Navigate to="/login" replace />;
@@ -33,7 +33,7 @@ function PublicRoute() {
   const { user, loading } = useContext(AuthContext);
 
   if(loading) {
-    return <div className="h-[calc(100vh-80px)] flex items-center bg-black"><Loader /></div>
+    return <div className="h-[calc(100vh-80px)] flex items-center justify-center bg-[#181C22]"><Loader /></div>
   }
 
   return user ? <Navigate to="/" replace /> : <Outlet />;

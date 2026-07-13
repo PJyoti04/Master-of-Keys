@@ -55,7 +55,7 @@ function MultiplayerHome() {
         h-[calc(100vh-80px)]
         overflow-hidden
         bg-[#181C22]
-        bg-[url('./MOK_Multiplayer2.png')]
+        bg-[url('/MOK_Multiplayer2.png')]
         bg-cover
         bg-center
       "
