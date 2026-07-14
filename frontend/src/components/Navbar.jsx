@@ -17,12 +17,13 @@ const Navbar = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  const menuRef = useRef(null);
+  const mobileRef = useRef(null);
+  const desktopRef = useRef(null);
   const mobileMenuRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (!menuRef.current?.contains(e.target)) {
+      if (!mobileRef.current?.contains(e.target) && !desktopRef.current?.contains(e.target)) {
         setShowUserMenu(false);
       }
 
@@ -137,7 +138,7 @@ const Navbar = () => {
               </button>
             </>
           ) : (
-            <div ref={menuRef} className="relative">
+            <div ref={desktopRef} className="relative">
               <div
                 onClick={() => setShowUserMenu((prev) => !prev)}
                 className="flex cursor-pointer items-center gap-2"
@@ -187,7 +188,7 @@ const Navbar = () => {
         {/* Mobile right section */}
         <div className="flex items-center gap-3 md:hidden">
           {user && (
-            <div ref={menuRef} className="relative">
+            <div ref={mobileRef} className="relative">
               <button
                 type="button"
                 onClick={() => {

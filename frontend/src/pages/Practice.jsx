@@ -1,12 +1,18 @@
-import { useState, useContext, useEffect } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import TypingTestKeyboard from "../components/KeyboardLayout/KBLayout";
-import TextBox from "../components/practice_page/TextBox";
 import ResultModal from "../components/practice_page/ResultModal";
 import { RiFocus3Fill } from "react-icons/ri";
-import { IoGitBranchOutline, IoBuild } from "react-icons/io5";
+import {
+  IoGitBranchOutline,
+  IoBuild,
+  IoChevronDown,
+  IoClose,
+} from "react-icons/io5";
 import Loader from "../components/ui/Loader";
+import TextBoxTest from "../components/practice_page/TextBoxTest";
+import TextBox from "../components/practice_page/TextBox";
 
 const DEFAULT_TIME = 60;
 const MAX_CUSTOM_TIME = 86400;
@@ -18,72 +24,167 @@ const Practice = () => {
 
   const getSavedPracticeTime = () => {
     const saved = Number(localStorage.getItem("practiceTime"));
-    return saved > 0 ? saved : DEFAULT_TIME;
+
+    if (
+      Number.isFinite(saved) &&
+      saved > 0 &&
+      saved <= MAX_CUSTOM_TIME
+    ) {
+      return saved;
+    }
+
+    return DEFAULT_TIME;
   };
 
+  const savedPracticeTime = getSavedPracticeTime();
+
   const [loading, setLoading] = useState(false);
-  const [selectedTime, setSelectedTime] = useState(getSavedPracticeTime);
-  const [timeLeft, setTimeLeft] = useState(getSavedPracticeTime);
-  const [customTime, setCustomTime] = useState(null);
+  const [selectedTime, setSelectedTime] = useState(savedPracticeTime);
+
+  const [customTime, setCustomTime] = useState(() => {
+    return PRESET_TIMES.includes(savedPracticeTime)
+      ? null
+      : savedPracticeTime;
+  });
+
+  const [timeLeft, setTimeLeft] = useState(savedPracticeTime);
   const [showCustomModal, setShowCustomModal] = useState(false);
+
   const [hours, setHours] = useState("");
   const [minutes, setMinutes] = useState("");
   const [seconds, setSeconds] = useState("");
+  const [customTimeError, setCustomTimeError] = useState("");
+
   const [resultData, setResultData] = useState(null);
   const [resetKey, setResetKey] = useState(0);
 
   const [focus, setFocus] = useState(() => {
-    const saved = localStorage.getItem("focus");
-    return saved ? JSON.parse(saved) : false;
+    try {
+      const saved = localStorage.getItem("focus");
+      return saved ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
   });
 
+  // Enable this when login protection is required.
   // useEffect(() => {
-  //   if (!user) navigate("/login");
+  //   if (!user) {
+  //     navigate("/login");
+  //   }
   // }, [user, navigate]);
 
   useEffect(() => {
     localStorage.setItem("focus", JSON.stringify(focus));
   }, [focus]);
 
+  /*
+   * The custom time must be used when present.
+   * Previously TextBoxTest received selectedTime only,
+   * which meant custom duration could be ignored.
+   */
   const activeTime = customTime ?? selectedTime;
 
   const formatTimeDisplay = (totalSeconds) => {
-    const hrs = Math.floor(totalSeconds / 3600);
-    const mins = Math.floor((totalSeconds % 3600) / 60);
-    const secs = totalSeconds % 60;
+    const safeSeconds = Math.max(0, Number(totalSeconds) || 0);
+
+    const hrs = Math.floor(safeSeconds / 3600);
+    const mins = Math.floor((safeSeconds % 3600) / 60);
+    const secs = safeSeconds % 60;
 
     const pad = (value) => String(value).padStart(2, "0");
 
     if (hrs > 0) {
       return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
     }
-    if (mins > 0) {
-      return `${pad(mins)}:${pad(secs)}`;
-    }
 
-    return `${pad(secs)}`;
+    return mins > 0 ? `${pad(mins)}:${pad(secs)}` : `${pad(secs)}`;
   };
 
   const formatDurationLabel = (totalSeconds) => {
     if (totalSeconds >= 3600) {
-      return `${Math.floor(totalSeconds / 3600)}h`;
+      const hrs = Math.floor(totalSeconds / 3600);
+      const remainingMinutes = Math.floor(
+        (totalSeconds % 3600) / 60
+      );
+
+      return remainingMinutes > 0
+        ? `${hrs}h ${remainingMinutes}m`
+        : `${hrs}h`;
     }
 
     if (totalSeconds >= 60) {
-      return `${Math.floor(totalSeconds / 60)}m`;
+      const mins = Math.floor(totalSeconds / 60);
+      const remainingSeconds = totalSeconds % 60;
+
+      return remainingSeconds > 0
+        ? `${mins}m ${remainingSeconds}s`
+        : `${mins}m`;
     }
 
     return `${totalSeconds}s`;
   };
 
-  const handleTimeSelect = (secondsValue) => {
-    setSelectedTime(secondsValue);
-    setTimeLeft(secondsValue);
-    setCustomTime(null);
+  const resetCurrentTest = (duration) => {
+    setTimeLeft(duration);
     setResultData(null);
+    setResetKey((previous) => previous + 1);
+  };
 
-    localStorage.setItem("practiceTime", secondsValue);
-    setResetKey((prev) => prev + 1);
+  const handleTimeSelect = (secondsValue) => {
+    const duration = Number(secondsValue);
+
+    if (!PRESET_TIMES.includes(duration)) {
+      return;
+    }
+
+    setSelectedTime(duration);
+    setCustomTime(null);
+
+    localStorage.setItem("practiceTime", String(duration));
+
+    resetCurrentTest(duration);
+  };
+
+  const openCustomModal = () => {
+    setCustomTimeError("");
+
+    if (customTime) {
+      const customHours = Math.floor(customTime / 3600);
+      const customMinutes = Math.floor(
+        (customTime % 3600) / 60
+      );
+      const customSeconds = customTime % 60;
+
+      setHours(customHours ? String(customHours) : "");
+      setMinutes(customMinutes ? String(customMinutes) : "");
+      setSeconds(customSeconds ? String(customSeconds) : "");
+    }
+
+    setShowCustomModal(true);
+  };
+
+  const closeCustomModal = () => {
+    setShowCustomModal(false);
+    setCustomTimeError("");
+  };
+
+  const handleCustomInputChange = (setter, maximum) => (event) => {
+    const rawValue = event.target.value;
+
+    if (rawValue === "") {
+      setter("");
+      setCustomTimeError("");
+      return;
+    }
+
+    const numericValue = Math.max(
+      0,
+      Math.min(Number(rawValue), maximum)
+    );
+
+    setter(String(numericValue));
+    setCustomTimeError("");
   };
 
   const handleCustomTime = () => {
@@ -94,20 +195,31 @@ const Practice = () => {
     const totalSeconds = h * 3600 + m * 60 + s;
 
     if (totalSeconds <= 0) {
-      alert("Custom duration must be greater than 0.");
+      setCustomTimeError(
+        "Custom duration must be greater than 0."
+      );
       return;
     }
 
     if (totalSeconds > MAX_CUSTOM_TIME) {
-      alert("Custom duration cannot exceed 24 hours.");
+      setCustomTimeError(
+        "Custom duration cannot exceed 24 hours."
+      );
       return;
     }
 
     setCustomTime(totalSeconds);
-    setTimeLeft(totalSeconds);
-    setResultData(null);
+    setSelectedTime(totalSeconds);
+
+    localStorage.setItem(
+      "practiceTime",
+      String(totalSeconds)
+    );
+
+    resetCurrentTest(totalSeconds);
+
     setShowCustomModal(false);
-    setResetKey((prev) => prev + 1);
+    setCustomTimeError("");
 
     setHours("");
     setMinutes("");
@@ -116,41 +228,54 @@ const Practice = () => {
 
   const resetTest = () => {
     const savedTime = getSavedPracticeTime();
+    const isPresetTime = PRESET_TIMES.includes(savedTime);
 
-    setCustomTime(null);
     setSelectedTime(savedTime);
+    setCustomTime(isPresetTime ? null : savedTime);
     setTimeLeft(savedTime);
     setResultData(null);
-    setResetKey((prev) => prev + 1);
+    setResetKey((previous) => previous + 1);
   };
 
   const handleFullscreen = () => {
-    setFocus((prev) => !prev);
+    setFocus((previous) => !previous);
   };
 
+  const mobileSelectValue = customTime
+    ? "custom"
+    : String(selectedTime);
+
   return (
-    <div className="bg-[#181C22] text-white flex flex-col items-center min-h-[calc(100vh-80px)] relative">
+    <div className="relative flex min-h-[calc(100vh-80px)] flex-col items-center overflow-x-hidden bg-[#181C22] text-white">
       {loading && (
-        <div className="fixed inset-0 z-[10000] bg-black/90 flex items-center justify-center">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-[#181C22]">
           <Loader />
         </div>
       )}
 
       {!resultData && !loading && (
-        <>
-          <div className="flex w-[80%] justify-between px-5 py-1 pt-6">
-            <div className="text-2xl font-semibold">
+        <div className="flex w-full flex-1 flex-col items-center">
+          {/* Timer toolbar */}
+          <div className="flex w-full max-w-[1280px] items-center justify-between gap-3 px-4 pb-2 pt-5 sm:px-6 md:w-[80%] md:px-5 md:py-1 md:pt-6">
+            {/* Remaining time */}
+            <div
+              className="shrink-0 text-xl font-semibold tabular-nums sm:text-2xl"
+              aria-live="polite"
+              aria-label={`${timeLeft} seconds remaining`}
+            >
               {formatTimeDisplay(timeLeft)}
             </div>
 
-            <div className="flex items-center gap-3 bg-black/30 px-3 py-1 rounded-xl text-xs">
+            {/* Desktop/tablet timer buttons */}
+            <div className="hidden items-center gap-3 rounded-xl bg-black/30 px-3 py-1 text-xs sm:flex">
               {PRESET_TIMES.map((preset) => (
                 <button
                   key={preset}
+                  type="button"
                   onClick={() => handleTimeSelect(preset)}
-                  className={`px-2 py-1 rounded-lg transition ${
+                  className={`rounded-lg px-2 py-1 transition ${
                     !customTime && selectedTime === preset
-                      ? "text-orange-500 bg-orange-500/10"
+                      ? "bg-orange-500/10 text-orange-500"
                       : "text-gray-400 hover:text-orange-500"
                   }`}
                 >
@@ -159,49 +284,129 @@ const Practice = () => {
               ))}
 
               <button
-                onClick={() => setShowCustomModal(true)}
-                className={`flex gap-1 items-center px-2 py-1 rounded-lg transition ${
+                type="button"
+                onClick={openCustomModal}
+                className={`flex items-center gap-1 rounded-lg px-2 py-1 transition ${
                   customTime
-                    ? "text-orange-500 bg-orange-500/10"
+                    ? "bg-orange-500/10 text-orange-500"
                     : "text-gray-400 hover:text-orange-500"
                 }`}
               >
                 <IoBuild />
-                {customTime ? formatDurationLabel(customTime) : "Custom"}
+
+                <span>
+                  {customTime ? formatDurationLabel(customTime) : "Custom"}
+                </span>
+              </button>
+            </div>
+
+            {/* Mobile timer select */}
+            <div className="flex items-center gap-2 sm:hidden">
+              <div className="relative">
+                <select
+                  value={mobileSelectValue}
+                  onChange={(event) => {
+                    const value = event.target.value;
+
+                    if (value === "custom") {
+                      openCustomModal();
+                      return;
+                    }
+
+                    handleTimeSelect(Number(value));
+                  }}
+                  aria-label="Select typing test duration"
+                  className="h-10 min-w-[112px] appearance-none rounded-xl bg-black/30 py-2 pl-3 pr-9 text-xs font-medium text-gray-300 outline-none transition focus:bg-black/40 focus:ring-2 focus:ring-orange-500/30"
+                >
+                  {PRESET_TIMES.map((preset) => (
+                    <option
+                      key={preset}
+                      value={preset}
+                      className="bg-[#181C22] text-white"
+                    >
+                      {formatDurationLabel(preset)}
+                    </option>
+                  ))}
+
+                  <option value="custom" className="bg-[#181C22] text-white">
+                    {customTime ? formatDurationLabel(customTime) : "Custom"}
+                  </option>
+                </select>
+
+                <IoChevronDown
+                  size={15}
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-orange-500"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={openCustomModal}
+                aria-label="Set custom test duration"
+                className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-black/30 transition ${
+                  customTime
+                    ? "text-orange-500"
+                    : "text-gray-400 hover:text-orange-500"
+                }`}
+              >
+                <IoBuild size={17} />
               </button>
             </div>
           </div>
 
-          <TextBox
-            key={resetKey}
-            timeLeft={timeLeft}
-            setTimeLeft={setTimeLeft}
-            initialTime={activeTime}
-            setLoading={setLoading}
-            onSessionSaved={setResultData}
-          />
+          {/* Typing area */}
+          <div className="w-full flex justify-center">
+            <TextBoxTest
+              key={resetKey}
+              timeLeft={timeLeft}
+              setTimeLeft={setTimeLeft}
+              initialTime={activeTime}
+              setLoading={setLoading}
+              onSessionSaved={setResultData}
+            />
+            {/* <TextBox
+              key={resetKey}
+              timeLeft={timeLeft}
+              setTimeLeft={setTimeLeft}
+              initialTime={activeTime}
+              setLoading={setLoading}
+              onSessionSaved={setResultData}
+            /> */}
+          </div>
 
-          <div className="w-full mt-2">
+          {/* Desktop and tablet visual keyboard */}
+          <div className="mt-2 hidden w-full sm:block">
             <TypingTestKeyboard isFullscreen={focus} />
           </div>
 
-          <div className="flex items-center justify-end w-full px-10 gap-10 fixed bottom-5 text-sm">
+          {/*
+           * On phones, the physical keyboard visualization is hidden.
+           * TextBoxTest should focus its hidden input/textarea when tapped,
+           * allowing the mobile virtual keyboard to open.
+           */}
+          <p className="mt-3 px-4 text-center font-sans text-xs text-gray-500 sm:hidden">
+            Tap the typing area to open your keyboard.
+          </p>
+
+          {/* Bottom controls */}
+          <div className="mt-auto flex w-full max-w-[1280px] items-center justify-between gap-5 px-4 pb-5 pt-4 text-xs sm:justify-end sm:gap-10 sm:px-8 sm:text-sm md:fixed md:bottom-5 md:right-0 md:px-10">
             <button
+              type="button"
               onClick={handleFullscreen}
-              className={`hover:text-orange-500 flex gap-0.5 items-center ${
+              className={`lg:flex items-center hidden gap-1 transition hover:text-orange-500 ${
                 focus ? "text-orange-500" : "text-gray-500"
               }`}
             >
               <RiFocus3Fill size={15} />
-              focus mode
+              <span>focus mode</span>
             </button>
 
-            <p className="text-gray-500 hover:text-orange-500 flex gap-1 items-center cursor-pointer">
+            <p className="flex cursor-pointer items-center gap-1 text-gray-500 transition hover:text-orange-500">
               <IoGitBranchOutline size={15} />
-              v2.0.0
+              <span>v2.0.0</span>
             </p>
           </div>
-        </>
+        </div>
       )}
 
       {resultData && (
@@ -212,55 +417,125 @@ const Practice = () => {
         />
       )}
 
+      {/* Custom duration modal */}
       {showCustomModal && (
-        <div className="fixed inset-0 z-[10001] bg-black/70 flex items-center justify-center">
-          <div className="w-[360px] bg-[#181C22] border border-white/10 rounded-2xl p-6 shadow-2xl">
-            <h2 className="text-xl font-semibold mb-4">Custom Duration</h2>
+        <div
+          className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/70 px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="custom-duration-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closeCustomModal();
+            }
+          }}
+        >
+          <div className="w-full max-w-[360px] rounded-2xl border border-white/10 bg-[#181C22] p-5 shadow-2xl sm:p-6">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <h2
+                id="custom-duration-title"
+                className="text-lg font-semibold sm:text-xl"
+              >
+                Custom Duration
+              </h2>
 
-            <div className="grid grid-cols-3 gap-3 mb-5">
-              <input
-                type="number"
-                min="0"
-                placeholder="Hours"
-                value={hours}
-                onChange={(e) => setHours(e.target.value)}
-                className="bg-black/30 rounded-xl px-3 py-2 outline-none"
-              />
-
-              <input
-                type="number"
-                min="0"
-                placeholder="Minutes"
-                value={minutes}
-                onChange={(e) => setMinutes(e.target.value)}
-                className="bg-black/30 rounded-xl px-3 py-2 outline-none"
-              />
-
-              <input
-                type="number"
-                min="0"
-                placeholder="Seconds"
-                value={seconds}
-                onChange={(e) => setSeconds(e.target.value)}
-                className="bg-black/30 rounded-xl px-3 py-2 outline-none"
-              />
+              <button
+                type="button"
+                onClick={closeCustomModal}
+                aria-label="Close custom duration modal"
+                className="grid h-9 w-9 place-items-center rounded-lg bg-white/5 text-gray-400 transition hover:bg-white/10 hover:text-orange-500"
+              >
+                <IoClose size={20} />
+              </button>
             </div>
 
-            <p className="text-xs text-gray-400 mb-5">
-              Maximum allowed duration is 24 hours.
-            </p>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="min-w-0">
+                <label
+                  htmlFor="custom-hours"
+                  className="mb-1.5 block text-[10px] uppercase tracking-wide text-gray-500"
+                >
+                  Hours
+                </label>
 
-            <div className="flex justify-end gap-3">
+                <input
+                  id="custom-hours"
+                  type="number"
+                  min="0"
+                  max="24"
+                  inputMode="numeric"
+                  value={hours}
+                  onChange={handleCustomInputChange(setHours, 24)}
+                  className="w-full min-w-0 rounded-xl bg-black/30 px-2 py-2.5 text-center text-sm outline-none transition placeholder:text-gray-600 focus:ring-2 focus:ring-orange-500/30 sm:px-3"
+                />
+              </div>
+
+              <div className="min-w-0">
+                <label
+                  htmlFor="custom-minutes"
+                  className="mb-1.5 block text-[10px] uppercase tracking-wide text-gray-500"
+                >
+                  Minutes
+                </label>
+
+                <input
+                  id="custom-minutes"
+                  type="number"
+                  min="0"
+                  max="59"
+                  inputMode="numeric"
+                  value={minutes}
+                  onChange={handleCustomInputChange(setMinutes, 59)}
+                  className="w-full min-w-0 rounded-xl bg-black/30 px-2 py-2.5 text-center text-sm outline-none transition placeholder:text-gray-600 focus:ring-2 focus:ring-orange-500/30 sm:px-3"
+                />
+              </div>
+
+              <div className="min-w-0">
+                <label
+                  htmlFor="custom-seconds"
+                  className="mb-1.5 block text-[10px] uppercase tracking-wide text-gray-500"
+                >
+                  Seconds
+                </label>
+
+                <input
+                  id="custom-seconds"
+                  type="number"
+                  min="0"
+                  max="59"
+                  inputMode="numeric"
+                  value={seconds}
+                  onChange={handleCustomInputChange(setSeconds, 59)}
+                  className="w-full min-w-0 rounded-xl bg-black/30 px-2 py-2.5 text-center text-sm outline-none transition placeholder:text-gray-600 focus:ring-2 focus:ring-orange-500/30 sm:px-3"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 min-h-8">
+              {customTimeError ? (
+                <p role="alert" className="text-xs text-red-400">
+                  {customTimeError}
+                </p>
+              ) : (
+                <p className="text-xs text-gray-400">
+                  Maximum allowed duration is 24 hours.
+                </p>
+              )}
+            </div>
+
+            <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
               <button
-                onClick={() => setShowCustomModal(false)}
-                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15"
+                type="button"
+                onClick={closeCustomModal}
+                className="w-full rounded-xl bg-white/10 px-4 py-2.5 text-sm transition hover:bg-white/15 sm:w-auto sm:py-2"
               >
                 Cancel
               </button>
 
               <button
+                type="button"
                 onClick={handleCustomTime}
-                className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 font-semibold"
+                className="w-full rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600 sm:w-auto sm:py-2"
               >
                 Set Time
               </button>
