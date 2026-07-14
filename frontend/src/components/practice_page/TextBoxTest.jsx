@@ -545,14 +545,14 @@ export default function TextBoxTest({
       textBoxRef.current.scrollTop +=
         cursorPosition.bottom -
         containerPosition.bottom +
-        35;
+        50;
     } else if (
       cursorPosition.top < containerPosition.top
     ) {
       textBoxRef.current.scrollTop -=
         containerPosition.top -
         cursorPosition.top +
-        20;
+        10;
     }
   }, [currentPosition]);
 
@@ -692,7 +692,7 @@ export default function TextBoxTest({
               event.stopPropagation();
               focusMobileInput();
             }}
-            className="sticky bottom-2 left-1/2 mt-5 block -translate-x-1/2 rounded-full bg-[#181C22]/90 px-4 py-2 font-sans text-xs text-zinc-400 shadow-xl backdrop-blur-md transition hover:text-orange-500 md:hidden"
+            className="sticky bottom-2 mt-5 block translate-x-1 rounded-full bg-[#181C22]/90 px-4 py-2 font-sans text-xs text-zinc-400 shadow-xl backdrop-blur-md transition hover:text-orange-500 md:hidden"
           >
             Tap here to open keyboard
           </button>

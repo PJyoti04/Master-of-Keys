@@ -10,16 +10,26 @@ import {
   Sparkles,
   Pencil,
   Check,
+  LoaderCircle,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
 import api from "../utils/api";
 import { AuthContext } from "../context/AuthContext";
 import { useContext } from "react";
+import { getRandomTypingText } from "../assets/typingTexts";
+
+const createInitialText = () => {
+  const firstParagraph = getRandomTypingText();
+  const secondParagraph = getRandomTypingText(firstParagraph);
+
+  return `${firstParagraph} ${secondParagraph}`;
+};
 
 function CreateRoom() {
   const navigate = useNavigate();
   const { currentUser } = useContext(AuthContext);
+  const [multiplayerText, setMultiplayerText] = useState(createInitialText);
 
   const isPremium =
     currentUser?.isPremium || currentUser?.subscription === "premium";
@@ -33,6 +43,7 @@ function CreateRoom() {
   });
 
   const [isCustomDuration, setIsCustomDuration] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -99,13 +110,15 @@ function CreateRoom() {
       return;
     }
 
+    setIsCreating(true);
+
     try {
       const payload = {
         ...formData,
         roomName: trimmedRoomName,
         maxPlayers: Number(formData.maxPlayers),
         duration: Number(formData.duration),
-        currentText: isPremium ? formData.currentText.trim() : "",
+        currentText: isPremium ? formData.currentText.trim() : multiplayerText,
       };
 
       const res = await api.post("/rooms/create", payload, {
@@ -120,6 +133,8 @@ function CreateRoom() {
     } catch (err) {
       console.error(err);
       toast.error(err?.response?.data?.message || "Unable to create room.");
+    }finally{
+      setIsCreating(false);
     }
   };
 
@@ -325,12 +340,39 @@ function CreateRoom() {
               </div>
             </div>
 
+            {/* <button
+              type="submit"
+              className="flex gap-5 items-center justify-center self-center bg-orange-500 hover:bg-orange-600 text-black text-sm font-semibold px-8 py-3.5 rounded-full transition shadow-lg shadow-orange-500/20"
+            > */}
+            {/* <Check /> */}
+            {/* Create room */}
+            {/* <span className="text-lg transition-transform duration-300 group-hover:translate-x-1">
+                →
+              </span>
+            </button> */}
             <button
               type="submit"
-              className="flex gap-2 items-center justify-center self-center bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3.5 rounded-full transition shadow-lg shadow-orange-500/20"
+              disabled={isCreating}
+              aria-busy={isCreating}
+              className="group relative self-center flex min-h-14 w-full items-center justify-center overflow-hidden rounded-2xl bg-orange-500 b-[#FF9100] px-6 font-sans text-sm font-bold text-[#181C22] shadow-[0_18px_45px_rgba(255,145,0,0.2)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#ffa52e] hover:shadow-[0_22px_50px_rgba(255,145,0,0.28)] focus:outline-none focus:ring-2 focus:ring-[#FF9100]/40 focus:ring-offset-2 focus:ring-offset-[#181C22] disabled:cursor-not-allowed disabled:opacity-65 disabled:hover:translate-y-0"
             >
-              <Check />
-              Create Room
+              <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+
+              <span className="relative flex items-center gap-2">
+                {isCreating ? (
+                  <>
+                    <LoaderCircle size={18} className="animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    Create room
+                    <span className="text-lg transition-transform duration-300 group-hover:translate-x-1">
+                      →
+                    </span>
+                  </>
+                )}
+              </span>
             </button>
           </div>
         </form>
