@@ -23,7 +23,7 @@ export const UserMenu = ({ userInfo, userInitial, onClose }) => {
     <div
       className="
         absolute right-0 top-full mt-3
-        w-80 rounded-3xl
+        md:w-80 w-[260px] rounded-3xl
         bg-[#1f1f1f]
         border border-gray-700
         shadow-2xl
@@ -65,7 +65,7 @@ export const UserMenu = ({ userInfo, userInitial, onClose }) => {
           Dashboard
         </button>
 
-        <button
+        {/* <button
           onClick={() => {
             nav("/dashboard/profile");
             onClose();
@@ -74,7 +74,7 @@ export const UserMenu = ({ userInfo, userInitial, onClose }) => {
         >
           <User size={18} />
           Manage Profile
-        </button>
+        </button> */}
 
         <button
           onClick={handleLogout}

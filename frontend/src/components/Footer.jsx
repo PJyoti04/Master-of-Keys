@@ -40,11 +40,18 @@ const Footer = () => {
               to="/"
               className="inline-flex items-center gap-3 text-lg font-extrabold text-white no-underline"
             >
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-orange-500 font-sans font-black text-[#151515]">
-                M
+              <span className="grid h-10 w-10 place-items-center rounded-xl b-orange-500 font-sans font-black text-[#151515]">
+                {/* M */}
+                <img
+                  className="h-[30px]"
+                  src="/keyboard-shortcut.1024x1020.png"
+                  alt="logo"
+                />
               </span>
 
-              <span>master of keys</span>
+              <span style={{ fontFamily: "Chelsea Market, system-ui" }}>
+                Master of Keys
+              </span>
             </Link>
 
             <p className="mt-5 max-w-[420px] font-sans leading-7 text-zinc-500">
@@ -179,9 +186,7 @@ const Footer = () => {
             reserved.
           </p>
 
-          <p className="max-sm:hidden">
-            Built for people who love to type.
-          </p>
+          <p className="max-sm:hidden">Built for people who love to type.</p>
         </div>
       </div>
     </footer>

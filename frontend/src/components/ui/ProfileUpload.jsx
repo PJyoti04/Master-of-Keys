@@ -1,4 +1,4 @@
-import { Pencil, Trash2, X, Camera } from "lucide-react";
+import { Pencil, Trash2, X, Camera, PencilLineIcon } from "lucide-react";
 import { useContext, useEffect, useRef, useState } from "react";
 
 import { AuthContext } from "../../context/AuthContext";
@@ -18,6 +18,8 @@ export default function ProfileUpload() {
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   const [uploading, setUploading] = useState(false);
+
+  const [removing, setRemoving] = useState(false);
 
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -70,6 +72,7 @@ export default function ProfileUpload() {
   };
 
   const handleRemovePhoto = async () => {
+    setRemoving(true);
     try {
       await api.patch("upload/profile/avatar/remove");
 
@@ -81,6 +84,8 @@ export default function ProfileUpload() {
       setShowMenu(false);
     } catch (err) {
       console.error(err);
+    }finally{
+      setRemoving(false);
     }
   };
 
@@ -90,7 +95,7 @@ export default function ProfileUpload() {
         {/* Avatar */}
         <div
           onClick={() => currentImage && setShowPreview(true)}
-          className="relative h-28 w-28 cursor-pointer overflow-hidden rounded-full border-4 border-orange-500 bg-orange-500 shadow-lg"
+          className="relative h-28 w-28 cursor-pointer overflow-hidden rounded-full border border-orange-500 b-orange-500 shadow-lg"
         >
           {currentImage ? (
             <img
@@ -99,7 +104,7 @@ export default function ProfileUpload() {
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-4xl font-bold text-white">
+            <div className="flex h-full w-full items-center justify-center text-4xl font-bold text-white bg-orange-500">
               {userInitial}
             </div>
           )}
@@ -107,43 +112,44 @@ export default function ProfileUpload() {
 
         {/* Edit Button */}
         <button
+          title="Edit Profile"
           ref={editBtnRef}
           onClick={() => setShowMenu((prev) => !prev)}
-          className="absolute bottom-1 right-0 flex translate-x-1/6 translate-y-1/6 items-center gap-2 rounded-full bg-white px-2 py-1 text-xs font-medium text-orange-500 shadow-lg transition hover:bg-orange-50"
+          className="absolute bottom-1 right-2 flex translate-x-1/6 translate-y-1/6 items-center gap-2 rounded-full bg-white px-2 py-2 text-xs font-medium text-orange-500 shadow-lg transition hover:bg-orange-50"
         >
-          <Camera size={13} />
-          Edit
+          <PencilLineIcon size={13} />
+          {/* Edit */}
         </button>
 
         {/* Dropdown */}
         {showMenu && (
           <div
             ref={menuRef}
-            className="absolute left-1/2 top-full z-50 mt-6 w-56 -translate-x-1/2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl"
+            className="absolute left-1/2 top-[85%] z-50 mt-6 w-40 -translate-x-1/2 overflow-hidden rounded-xl border border-gray-600 bg-[#181C22] shadow-xl"
           >
             <button
               onClick={() => {
                 setShowMenu(false);
                 setShowUploadModal(true);
               }}
-              className="flex w-full items-center gap-3 px-4 py-3 border-b text-orange-500 text-left text-sm hover:bg-orange-500/20"
+              className="flex w-full items-center gap-3 px-4 py-3 border-b border-gray-600 text-white text-left text-sm hover:bg-gray-500/20"
             >
-              <Pencil size={16} />
+              <Camera className="text-orange-500" size={16} />
               Update Photo
             </button>
 
             <button
               onClick={handleRemovePhoto}
-              disabled={!currentImage}
+              disabled={!currentImage || removing}
               className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm
               ${
                 currentImage
-                  ? "text-red-600 hover:bg-red-500/20"
-                  : "cursor-not-allowed text-gray-400"
+                  ? "text-red-500 hover:bg-red-500/20"
+                  : "cursor-not-allowed text-gray-600"
               }`}
             >
               <Trash2 size={16} />
-              Remove Photo
+             {removing ? "Removing..." : "Remove Photo"}
             </button>
           </div>
         )}

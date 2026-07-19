@@ -63,7 +63,7 @@ export default function ImageUploadModal({
       onClick={() => !loading && onClose()}
     >
       <div
-        className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
+        className="w-full max-w-md rounded-3xl bg-[#171B20] p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between pb-4">
@@ -121,7 +121,7 @@ export default function ImageUploadModal({
                     </svg>
 
                     <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold">
-                      {progress}%
+                      {Math.round(progress)}%
                     </span>
                   </div>
                 ) : (

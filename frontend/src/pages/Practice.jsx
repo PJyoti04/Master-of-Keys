@@ -393,7 +393,7 @@ const Practice = () => {
             <button
               type="button"
               onClick={handleFullscreen}
-              className={`lg:flex items-center hidden gap-1 transition hover:text-orange-500 ${
+              className={`md:flex items-center hidden gap-1 transition hover:text-orange-500 ${
                 focus ? "text-orange-500" : "text-gray-500"
               }`}
             >

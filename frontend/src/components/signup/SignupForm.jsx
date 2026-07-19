@@ -373,7 +373,12 @@ const SignupForm = () => {
 
               <h1 className="text-4xl font-black leading-tight tracking-[-0.04em] text-white">
                 Welcome to
-                <span style={{ fontFamily: "Chelsea Market, system-ui" }} className="block text-[#FF9100]">Master of Keys</span>
+                <span
+                  style={{ fontFamily: "Chelsea Market, system-ui" }}
+                  className="block text-[#FF9100]"
+                >
+                  Master of Keys
+                </span>
               </h1>
 
               <p className="mt-3 max-w-sm font-mono text-sm leading-6 text-zinc-300">
@@ -392,11 +397,18 @@ const SignupForm = () => {
                   className="inline-flex items-center gap-3 font-bold text-white"
                   aria-label="Go to Master of Keys home page"
                 >
-                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#FF9100] font-sans font-black text-[#181C22]">
-                    M
+                  <span className="grid h-10 w-10 place-items-center rounded-xl b-[#FF9100] font-sans font-black text-[#181C22]">
+                    {/* M */}
+                    <img
+                      className="h-[30px]"
+                      src="/keyboard-shortcut.1024x1020.png"
+                      alt="logo"
+                    />
                   </span>
 
-                  <span style={{ fontFamily: "Chelsea Market, system-ui" }}>Master of Keys</span>
+                  <span style={{ fontFamily: "Chelsea Market, system-ui" }}>
+                    Master of Keys
+                  </span>
                 </Link>
               </div>
 
@@ -551,9 +563,7 @@ const SignupForm = () => {
 
                     <button
                       type="button"
-                      onClick={() =>
-                        setShowPassword((previous) => !previous)
-                      }
+                      onClick={() => setShowPassword((previous) => !previous)}
                       disabled={isSubmitting}
                       aria-label={
                         showPassword ? "Hide password" : "Show password"
@@ -561,11 +571,7 @@ const SignupForm = () => {
                       aria-pressed={showPassword}
                       className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg text-zinc-500 transition duration-200 hover:bg-white/5 hover:text-[#FF9100] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {showPassword ? (
-                        <EyeOff size={18} />
-                      ) : (
-                        <Eye size={18} />
-                      )}
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
 
@@ -596,22 +602,16 @@ const SignupForm = () => {
                         6+ characters
                       </RequirementItem>
 
-                      <RequirementItem
-                        isValid={passwordRequirements.hasLetter}
-                      >
+                      <RequirementItem isValid={passwordRequirements.hasLetter}>
                         One letter
                       </RequirementItem>
 
-                      <RequirementItem
-                        isValid={passwordRequirements.hasNumber}
-                      >
+                      <RequirementItem isValid={passwordRequirements.hasNumber}>
                         One number
                       </RequirementItem>
 
                       <RequirementItem
-                        isValid={
-                          passwordRequirements.hasSpecialCharacter
-                        }
+                        isValid={passwordRequirements.hasSpecialCharacter}
                       >
                         Special character
                       </RequirementItem>
@@ -630,10 +630,7 @@ const SignupForm = () => {
                   <span className="relative flex items-center gap-2">
                     {isSubmitting ? (
                       <>
-                        <LoaderCircle
-                          size={18}
-                          className="animate-spin"
-                        />
+                        <LoaderCircle size={18} className="animate-spin" />
                         Creating account...
                       </>
                     ) : (

@@ -64,10 +64,57 @@ const playerSchema = new mongoose.Schema(
       default: 0,
     },
 
+    backspaceCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     finished: {
       type: Boolean,
       default: false,
     },
+
+    finishedAt: {
+      type: Date,
+      default: null,
+    },
+  },
+  { _id: false }
+);
+
+const finalLeaderboardPlayerSchema = new mongoose.Schema(
+  {
+    rank: Number,
+
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    username: String,
+
+    profilePhoto: {
+      type: String,
+      default: "",
+    },
+
+    progress: Number,
+
+    wpm: Number,
+
+    accuracy: Number,
+
+    correctChars: Number,
+
+    wrongChars: Number,
+
+    backspaceCount: {
+      type: Number,
+      default: 0,
+    },
+
+    finished: Boolean,
 
     finishedAt: {
       type: Date,
@@ -158,6 +205,11 @@ const roomSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
+    },
+
+    finalLeaderboard: {
+      type: [finalLeaderboardPlayerSchema],
+      default: [],
     },
   },
   { timestamps: true }

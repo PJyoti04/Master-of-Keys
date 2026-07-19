@@ -5,108 +5,264 @@ import {
   HiOutlineArrowPath,
   HiOutlineBolt,
   HiOutlineCheckCircle,
+  HiOutlineClock,
   HiOutlineHome,
   HiOutlineTrophy,
   HiOutlineUsers,
   HiOutlineXCircle,
 } from "react-icons/hi2";
-import {
-  FaCrown,
-  FaMedal,
-} from "react-icons/fa6";
+import { FaCrown, FaMedal } from "react-icons/fa6";
 import { IoGameControllerOutline } from "react-icons/io5";
 
 import socket from "../utils/socket";
 import { useRoom } from "../context/RoomContext";
 import api from "../utils/api";
 
-const normalizePlayer = (player = {}, index = 0) => ({
-  userId:
-    player.userId ||
-    player.user ||
-    player._id ||
-    null,
+/*
+ * Safely converts a value into a number.
+ */
+const toNumber = (value, fallback = 0) => {
+  const parsedValue = Number(value);
 
-  rank:
-    Number(player.rank) ||
-    index + 1,
+  return Number.isFinite(parsedValue)
+    ? parsedValue
+    : fallback;
+};
 
-  username:
-    player.username ||
-    "Unknown player",
+/*
+ * Restricts a value to a given range.
+ */
+const clamp = (value, minimum, maximum) => {
+  return Math.min(
+    maximum,
+    Math.max(minimum, toNumber(value))
+  );
+};
 
-  profileAvatar:
-    player.profileAvatar ||
-    player.avatar ||
-    null,
+/*
+ * Converts the room duration into MM:SS or HH:MM:SS.
+ */
+const formatDuration = (totalSeconds = 0) => {
+  const safeSeconds = Math.max(
+    0,
+    Math.floor(toNumber(totalSeconds))
+  );
 
-  progress:
-    Math.min(
-      100,
-      Math.max(
-        0,
-        Number(player.progress) || 0
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor(
+    (safeSeconds % 3600) / 60
+  );
+  const seconds = safeSeconds % 60;
+
+  const pad = (value) =>
+    String(value).padStart(2, "0");
+
+  if (hours > 0) {
+    return `${pad(hours)}:${pad(minutes)}:${pad(
+      seconds
+    )}`;
+  }
+
+  return `${pad(minutes)}:${pad(seconds)}`;
+};
+
+/*
+ * Finds the complete room player corresponding
+ * to a leaderboard entry.
+ *
+ * The results API currently contains only:
+ * rank, userId, username, progress, wpm,
+ * accuracy, finished and finishedAt.
+ *
+ * Additional fields such as profilePhoto,
+ * correctChars and wrongChars are taken from
+ * room.players.
+ */
+const findRoomPlayer = (
+  leaderboardPlayer,
+  roomPlayers = []
+) => {
+  const leaderboardUserId =
+    leaderboardPlayer?.userId ||
+    leaderboardPlayer?.user ||
+    leaderboardPlayer?._id;
+
+  return roomPlayers.find((roomPlayer) => {
+    const roomPlayerUserId =
+      roomPlayer?.user ||
+      roomPlayer?.userId ||
+      roomPlayer?._id;
+
+    if (
+      leaderboardUserId &&
+      roomPlayerUserId &&
+      String(leaderboardUserId) ===
+        String(roomPlayerUserId)
+    ) {
+      return true;
+    }
+
+    return (
+      leaderboardPlayer?.username &&
+      roomPlayer?.username ===
+        leaderboardPlayer.username
+    );
+  });
+};
+
+/*
+ * Normalizes one leaderboard entry and enriches
+ * it with information from room.players.
+ */
+const normalizePlayer = (
+  leaderboardPlayer = {},
+  index = 0,
+  roomPlayers = []
+) => {
+  const roomPlayer =
+    findRoomPlayer(
+      leaderboardPlayer,
+      roomPlayers
+    ) || {};
+
+  return {
+    userId:
+      leaderboardPlayer.userId ||
+      leaderboardPlayer.user ||
+      leaderboardPlayer._id ||
+      roomPlayer.user ||
+      roomPlayer.userId ||
+      roomPlayer._id ||
+      null,
+
+    /*
+     * Preserve the rank returned by the results API.
+     */
+    rank:
+      toNumber(
+        leaderboardPlayer.rank,
+        index + 1
+      ) || index + 1,
+
+    username:
+      leaderboardPlayer.username ||
+      roomPlayer.username ||
+      "Unknown player",
+
+    /*
+     * Your player model uses profilePhoto.
+     */
+    profilePhoto:
+      leaderboardPlayer.profilePhoto ||
+      roomPlayer.profilePhoto ||
+      "",
+
+    progress: clamp(
+      leaderboardPlayer.progress ??
+        roomPlayer.progress,
+      0,
+      100
+    ),
+
+    wpm: Math.max(
+      0,
+      toNumber(
+        leaderboardPlayer.wpm ??
+          roomPlayer.wpm
       )
     ),
 
-  wpm:
-    Math.max(
+    accuracy: clamp(
+      leaderboardPlayer.accuracy ??
+        roomPlayer.accuracy,
       0,
-      Number(player.wpm) || 0
+      100
     ),
 
-  accuracy:
-    Math.min(
-      100,
-      Math.max(
-        0,
-        Number(player.accuracy) || 0
+    correctChars: Math.max(
+      0,
+      toNumber(
+        leaderboardPlayer.correctChars ??
+          roomPlayer.correctChars
       )
     ),
 
-  correctChars:
-    Math.max(
+    wrongChars: Math.max(
       0,
-      Number(player.correctChars) || 0
+      toNumber(
+        leaderboardPlayer.wrongChars ??
+          roomPlayer.wrongChars
+      )
     ),
 
-  wrongChars:
-    Math.max(
+    /*
+     * backspaceCount is not currently present in
+     * the API response or the shown room player
+     * objects, so it safely falls back to zero.
+     */
+    backspaceCount: Math.max(
       0,
-      Number(player.wrongChars) || 0
+      toNumber(
+        leaderboardPlayer.backspaceCount ??
+          roomPlayer.backspaceCount
+      )
     ),
 
-  backspaceCount:
-    Math.max(
-      0,
-      Number(player.backspaceCount) || 0
+    finished: Boolean(
+      leaderboardPlayer.finished ??
+        roomPlayer.finished
     ),
 
-  finished:
-    Boolean(player.finished),
+    finishedAt:
+      leaderboardPlayer.finishedAt ||
+      roomPlayer.finishedAt ||
+      null,
+  };
+};
 
-  finishTime:
-    player.finishTime ||
-    player.finishedAt ||
-    null,
-});
+/*
+ * For completed results, preserve the API rank.
+ */
+const normalizeFinalLeaderboard = (
+  players = [],
+  roomPlayers = []
+) => {
+  if (!Array.isArray(players)) {
+    return [];
+  }
 
-const sortLeaderboard = (players = []) => {
-  return [...players]
+  return players
     .map((player, index) =>
-      normalizePlayer(player, index)
+      normalizePlayer(
+        player,
+        index,
+        roomPlayers
+      )
+    )
+    .sort(
+      (first, second) =>
+        first.rank - second.rank
+    );
+};
+
+/*
+ * Used only as a fallback when the final results
+ * API cannot be loaded.
+ */
+const buildFallbackLeaderboard = (
+  roomPlayers = []
+) => {
+  return [...roomPlayers]
+    .map((player, index) =>
+      normalizePlayer(
+        player,
+        index,
+        roomPlayers
+      )
     )
     .sort((first, second) => {
-      /*
-       * Ranking priority:
-       * 1. Finished players
-       * 2. Progress
-       * 3. WPM
-       * 4. Accuracy
-       */
       if (
-        first.finished !==
-        second.finished
+        first.finished !== second.finished
       ) {
         return (
           Number(second.finished) -
@@ -115,12 +271,10 @@ const sortLeaderboard = (players = []) => {
       }
 
       if (
-        second.progress !==
-        first.progress
+        second.progress !== first.progress
       ) {
         return (
-          second.progress -
-          first.progress
+          second.progress - first.progress
         );
       }
 
@@ -129,8 +283,7 @@ const sortLeaderboard = (players = []) => {
       }
 
       return (
-        second.accuracy -
-        first.accuracy
+        second.accuracy - first.accuracy
       );
     })
     .map((player, index) => ({
@@ -146,16 +299,34 @@ function ResultPage() {
   const [leaderboard, setLeaderboard] =
     useState([]);
 
-  const [fetchingResults, setFetchingResults] =
-    useState(false);
+  const [
+    fetchingResults,
+    setFetchingResults,
+  ] = useState(false);
 
   const [resultError, setResultError] =
     useState("");
 
+  const [hasFinalResults, setHasFinalResults] =
+    useState(false);
+
+  const roomCode = room?.roomCode;
+  const roomStatus = room?.status;
+
+  /*
+   * Fetch the finalized leaderboard from the API.
+   *
+   * Do not depend on room.players here. A player
+   * leaving may update room.players, but that
+   * should not trigger the final results to be
+   * rebuilt or removed.
+   */
   useEffect(() => {
-    if (!room?.roomCode) {
+    if (!roomCode) {
       return;
     }
+
+    let isMounted = true;
 
     const fetchResults = async () => {
       setFetchingResults(true);
@@ -163,19 +334,38 @@ function ResultPage() {
 
       try {
         const response = await api.get(
-          `/rooms/${room.roomCode}/results`,
+          `/rooms/${roomCode}/results`,
           {
             withCredentials: true,
           }
         );
 
+        if (!isMounted) {
+          return;
+        }
+
+        const responseRoom =
+          response.data?.room || room;
+
+        const responseRoomPlayers =
+          responseRoom?.players || [];
+
         const serverLeaderboard =
           response.data?.leaderboard || [];
 
         setLeaderboard(
-          sortLeaderboard(serverLeaderboard)
+          normalizeFinalLeaderboard(
+            serverLeaderboard,
+            responseRoomPlayers
+          )
         );
+
+        setHasFinalResults(true);
       } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
         console.error(
           "Failed to fetch results:",
           error?.response?.data || error
@@ -183,33 +373,61 @@ function ResultPage() {
 
         setResultError(
           error?.response?.data?.message ||
-            "Unable to load final results from the server. Showing the latest local standings."
+            "Unable to load the finalized results. Showing the latest stored room standings."
         );
 
         setLeaderboard(
-          sortLeaderboard(room.players || [])
+          buildFallbackLeaderboard(
+            room?.players || []
+          )
+        );
+
+        /*
+         * The fallback is still treated as fixed
+         * when the room is completed.
+         */
+        setHasFinalResults(
+          roomStatus === "completed"
         );
       } finally {
-        setFetchingResults(false);
+        if (isMounted) {
+          setFetchingResults(false);
+        }
       }
     };
 
     fetchResults();
-  }, [
-    room?.roomCode,
-    room?.players,
-  ]);
 
+    return () => {
+      isMounted = false;
+    };
+  }, [roomCode, roomStatus]);
+
+  /*
+   * Listen to live leaderboard updates only while
+   * the race is still active.
+   *
+   * Once final results have been received, ignore
+   * all later leaderboard-update events. This
+   * prevents disconnected players from disappearing.
+   */
   useEffect(() => {
     const handleLeaderboardUpdate = (
       data
     ) => {
+      if (
+        roomStatus === "completed" ||
+        hasFinalResults
+      ) {
+        return;
+      }
+
       if (!Array.isArray(data)) {
         return;
       }
 
       setLeaderboard(
-        sortLeaderboard(data)
+        buildFallbackLeaderboard(data)
       );
     };
 
@@ -224,18 +442,53 @@ function ResultPage() {
         handleLeaderboardUpdate
       );
     };
-  }, []);
+  }, [roomStatus, hasFinalResults]);
 
-  const winner =
-    leaderboard.length > 0
-      ? leaderboard[0]
-      : null;
+  /*
+   * Prefer the winner ID stored in the room.
+   * Fall back to rank one.
+   */
+  const winner = useMemo(() => {
+    if (leaderboard.length === 0) {
+      return null;
+    }
 
-  const topThree =
-    leaderboard.slice(0, 3);
+    if (room?.winner) {
+      const savedWinner =
+        leaderboard.find(
+          (player) =>
+            String(player.userId) ===
+            String(room.winner)
+        );
 
-  const remainingPlayers =
-    leaderboard.slice(3);
+      if (savedWinner) {
+        return savedWinner;
+      }
+    }
+
+    return leaderboard.find(
+      (player) => player.rank === 1
+    ) || leaderboard[0];
+  }, [leaderboard, room?.winner]);
+
+  /*
+   * The top performers section includes ranks 1–3.
+   */
+  const topPerformers = useMemo(() => {
+    return leaderboard.filter(
+      (player) => player.rank <= 3
+    );
+  }, [leaderboard]);
+
+  /*
+   * The remaining leaderboard begins with rank 4,
+   * so the first three players are not repeated.
+   */
+  const remainingPlayers = useMemo(() => {
+    return leaderboard.filter(
+      (player) => player.rank >= 4
+    );
+  }, [leaderboard]);
 
   const raceSummary = useMemo(() => {
     if (leaderboard.length === 0) {
@@ -260,57 +513,48 @@ function ResultPage() {
 
     const totalWpm =
       leaderboard.reduce(
-        (sum, player) =>
-          sum + player.wpm,
+        (total, player) =>
+          total + player.wpm,
         0
       );
 
     const totalAccuracy =
       leaderboard.reduce(
-        (sum, player) =>
-          sum + player.accuracy,
+        (total, player) =>
+          total + player.accuracy,
         0
       );
 
-    const highestWpm = Math.max(
-      ...leaderboard.map(
-        (player) => player.wpm
-      )
-    );
-
     const totalCorrectChars =
       leaderboard.reduce(
-        (sum, player) =>
-          sum + player.correctChars,
+        (total, player) =>
+          total + player.correctChars,
         0
       );
 
     const totalWrongChars =
       leaderboard.reduce(
-        (sum, player) =>
-          sum + player.wrongChars,
+        (total, player) =>
+          total + player.wrongChars,
         0
       );
+
+    const highestWpm = Math.max(
+      0,
+      ...leaderboard.map(
+        (player) => player.wpm
+      )
+    );
 
     return {
       totalPlayers,
       finishedPlayers,
-
-      averageWpm:
-        totalPlayers > 0
-          ? Math.round(
-              totalWpm / totalPlayers
-            )
-          : 0,
-
-      averageAccuracy:
-        totalPlayers > 0
-          ? Math.round(
-              totalAccuracy /
-                totalPlayers
-            )
-          : 0,
-
+      averageWpm: Math.round(
+        totalWpm / totalPlayers
+      ),
+      averageAccuracy: Math.round(
+        totalAccuracy / totalPlayers
+      ),
       highestWpm,
       totalCorrectChars,
       totalWrongChars,
@@ -351,8 +595,8 @@ function ResultPage() {
         </h1>
 
         <p className="mt-2 max-w-md font-sans text-sm leading-6 text-zinc-500">
-          The room may have expired or is no
-          longer available.
+          The room may have expired or may no
+          longer be available.
         </p>
 
         <button
@@ -368,7 +612,6 @@ function ResultPage() {
 
   return (
     <main className="relative min-h-[calc(100vh-80px)] overflow-x-hidden bg-[#181C22] text-white">
-      {/* Decorative background */}
       <div className="pointer-events-none absolute -left-32 top-20 h-80 w-80 rounded-full bg-orange-500/[0.07] blur-[120px]" />
 
       <div className="pointer-events-none absolute -right-32 top-1/3 h-96 w-96 rounded-full bg-orange-600/[0.05] blur-[130px]" />
@@ -385,7 +628,6 @@ function ResultPage() {
       />
 
       <div className="relative z-10 mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        {/* Page heading */}
         <header className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
             <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -409,7 +651,6 @@ function ResultPage() {
             </p>
           </div>
 
-          {/* Navigation controls */}
           <div className="flex flex-wrap gap-2 sm:gap-3">
             <Link
               to="/"
@@ -448,132 +689,15 @@ function ResultPage() {
         )}
 
         {leaderboard.length === 0 ? (
-          <div className="flex min-h-[420px] flex-col items-center justify-center rounded-3xl bg-black/15 px-5 text-center">
-            <span className="grid h-16 w-16 place-items-center rounded-2xl bg-orange-500/10 text-orange-400">
-              <HiOutlineUsers size={31} />
-            </span>
-
-            <h2 className="mt-5 text-2xl font-bold">
-              No results available
-            </h2>
-
-            <p className="mt-2 max-w-md font-sans text-sm leading-6 text-zinc-500">
-              No player results were recorded
-              for this race.
-            </p>
-
-            <button
-              type="button"
-              onClick={handleStartNewGame}
-              className="mt-6 rounded-xl bg-orange-500 px-5 py-3 font-sans text-sm font-semibold text-[#181C22] transition hover:bg-orange-400"
-            >
-              Start a new game
-            </button>
-          </div>
+          <EmptyResults
+            onStartNewGame={handleStartNewGame}
+          />
         ) : (
           <>
-            {/* Winner banner */}
             {winner && (
-              <section className="relative mb-6 overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500/20 via-orange-500/[0.07] to-black/10 p-5 sm:p-7">
-                <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-orange-500/20 blur-[75px]" />
-
-                <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      {winner.profileAvatar ? (
-                        <img
-                          src={
-                            winner.profileAvatar
-                          }
-                          alt={`${winner.username} profile`}
-                          className="h-16 w-16 rounded-2xl object-cover sm:h-20 sm:w-20"
-                        />
-                      ) : (
-                        <span className="grid h-16 w-16 place-items-center rounded-2xl bg-orange-500 text-2xl font-black uppercase text-[#181C22] sm:h-20 sm:w-20">
-                          {winner.username
-                            ?.charAt(0)
-                            .toUpperCase() || "?"}
-                        </span>
-                      )}
-
-                      <span className="absolute -right-2 -top-3 grid h-8 w-8 rotate-12 place-items-center rounded-full bg-yellow-400 text-[#181C22] shadow-lg">
-                        <FaCrown size={17} />
-                      </span>
-                    </div>
-
-                    <div>
-                      <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-orange-400">
-                        Race winner
-                      </p>
-
-                      <h2 className="mt-1 text-2xl font-black text-white sm:text-3xl">
-                        {winner.username}
-                      </h2>
-
-                      <p className="mt-1 font-sans text-xs text-zinc-400 sm:text-sm">
-                        Finished with{" "}
-                        <span className="font-semibold text-orange-400">
-                          {Math.round(
-                            winner.wpm
-                          )}{" "}
-                          WPM
-                        </span>{" "}
-                        and{" "}
-                        <span className="font-semibold text-emerald-400">
-                          {Math.round(
-                            winner.accuracy
-                          )}
-                          % accuracy
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 sm:min-w-[350px]">
-                    <SummaryMetric
-                      label="WPM"
-                      value={Math.round(
-                        winner.wpm
-                      )}
-                      icon={
-                        <HiOutlineBolt
-                          size={17}
-                        />
-                      }
-                      valueClass="text-orange-400"
-                    />
-
-                    <SummaryMetric
-                      label="Accuracy"
-                      value={`${Math.round(
-                        winner.accuracy
-                      )}%`}
-                      icon={
-                        <HiOutlineCheckCircle
-                          size={17}
-                        />
-                      }
-                      valueClass="text-emerald-400"
-                    />
-
-                    <SummaryMetric
-                      label="Progress"
-                      value={`${Math.round(
-                        winner.progress
-                      )}%`}
-                      icon={
-                        <HiOutlineTrophy
-                          size={17}
-                        />
-                      }
-                      valueClass="text-yellow-400"
-                    />
-                  </div>
-                </div>
-              </section>
+              <WinnerBanner winner={winner} />
             )}
 
-            {/* Race summary */}
             <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               <SummaryCard
                 label="Players"
@@ -597,6 +721,17 @@ function ResultPage() {
                   />
                 }
                 iconClass="text-emerald-400"
+              />
+
+              <SummaryCard
+                label="Duration"
+                value={formatDuration(
+                  room.duration
+                )}
+                icon={
+                  <HiOutlineClock size={19} />
+                }
+                iconClass="text-sky-400"
               />
 
               <SummaryCard
@@ -631,32 +766,35 @@ function ResultPage() {
                 }
                 iconClass="text-emerald-400"
               />
-
-              <SummaryCard
-                label="Total Errors"
-                value={
-                  raceSummary.totalWrongChars
-                }
-                icon={
-                  <HiOutlineXCircle size={19} />
-                }
-                iconClass="text-red-400"
-              />
             </section>
 
-            {/* Podium */}
-            {topThree.length > 0 && (
+            {topPerformers.length > 0 && (
               <section className="mb-8">
                 <div className="mb-4 flex items-center gap-2">
                   <FaMedal className="text-orange-400" />
 
-                  <h2 className="text-xl font-bold">
-                    Top Performers
-                  </h2>
+                  <div>
+                    <h2 className="text-xl font-bold">
+                      Top Performers
+                    </h2>
+
+                    <p className="mt-1 font-sans text-xs text-zinc-600">
+                      The highest-ranked players
+                      from this race.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  {topThree.map(
+                <div
+                  className={`grid grid-cols-1 gap-4 ${
+                    topPerformers.length === 2
+                      ? "md:grid-cols-2"
+                      : topPerformers.length >= 3
+                        ? "md:grid-cols-3"
+                        : ""
+                  }`}
+                >
+                  {topPerformers.map(
                     (player) => (
                       <PodiumCard
                         key={
@@ -671,44 +809,50 @@ function ResultPage() {
               </section>
             )}
 
-            {/* Full leaderboard */}
-            <section>
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-bold">
-                    Complete Leaderboard
-                  </h2>
+            {remainingPlayers.length > 0 && (
+              <section>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold">
+                      Complete Leaderboard
+                    </h2>
 
-                  <p className="mt-1 font-sans text-xs text-zinc-600">
-                    Final performance for every
-                    player in the room.
-                  </p>
+                    <p className="mt-1 font-sans text-xs text-zinc-600">
+                      Rankings beginning from
+                      fourth place.
+                    </p>
+                  </div>
+
+                  <span className="rounded-full bg-black/20 px-3 py-1.5 font-sans text-[10px] text-zinc-500">
+                    {remainingPlayers.length}{" "}
+                    remaining
+                  </span>
                 </div>
 
-                <span className="rounded-full bg-black/20 px-3 py-1.5 font-sans text-[10px] text-zinc-500">
-                  {leaderboard.length} players
-                </span>
-              </div>
+                <div className="space-y-3">
+                  {remainingPlayers.map(
+                    (player) => (
+                      <LeaderboardRow
+                        key={
+                          player.userId ||
+                          `${player.rank}-${player.username}`
+                        }
+                        player={player}
+                      />
+                    )
+                  )}
+                </div>
+              </section>
+            )}
 
-              <div className="space-y-3">
-                {/*
-                 * Include all players here.
-                 * If you only want players after
-                 * the podium, use remainingPlayers.
-                 */}
-                {leaderboard.map((player) => (
-                  <LeaderboardRow
-                    key={
-                      player.userId ||
-                      `${player.rank}-${player.username}`
-                    }
-                    player={player}
-                  />
-                ))}
+            {remainingPlayers.length === 0 && (
+              <div className="rounded-2xl bg-black/15 px-5 py-4 text-center font-sans text-xs text-zinc-500">
+                All participants are already
+                displayed in the top performers
+                section.
               </div>
-            </section>
+            )}
 
-            {/* Bottom navigation */}
             <div className="mt-10 flex flex-col items-center justify-center gap-3 rounded-3xl bg-black/15 px-5 py-7 text-center sm:flex-row">
               <div className="sm:mr-auto sm:text-left">
                 <h3 className="font-semibold text-white">
@@ -723,9 +867,7 @@ function ResultPage() {
 
               <button
                 type="button"
-                onClick={
-                  handleReturnToMultiplayer
-                }
+                onClick={handleReturnToMultiplayer}
                 className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white/[0.05] px-5 font-sans text-sm font-semibold text-zinc-300 transition hover:bg-white/[0.09] hover:text-white sm:w-auto"
               >
                 <IoGameControllerOutline
@@ -747,6 +889,143 @@ function ResultPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function EmptyResults({ onStartNewGame }) {
+  return (
+    <div className="flex min-h-[420px] flex-col items-center justify-center rounded-3xl bg-black/15 px-5 text-center">
+      <span className="grid h-16 w-16 place-items-center rounded-2xl bg-orange-500/10 text-orange-400">
+        <HiOutlineUsers size={31} />
+      </span>
+
+      <h2 className="mt-5 text-2xl font-bold">
+        No results available
+      </h2>
+
+      <p className="mt-2 max-w-md font-sans text-sm leading-6 text-zinc-500">
+        No player results were recorded for
+        this race.
+      </p>
+
+      <button
+        type="button"
+        onClick={onStartNewGame}
+        className="mt-6 rounded-xl bg-orange-500 px-5 py-3 font-sans text-sm font-semibold text-[#181C22] transition hover:bg-orange-400"
+      >
+        Start a new game
+      </button>
+    </div>
+  );
+}
+
+function WinnerBanner({ winner }) {
+  return (
+    <section className="relative mb-6 overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500/20 via-orange-500/[0.07] to-black/10 p-5 sm:p-7">
+      <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-orange-500/20 blur-[75px]" />
+
+      <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4">
+          <PlayerAvatar
+            player={winner}
+            sizeClass="h-16 w-16 sm:h-20 sm:w-20"
+            textClass="text-2xl"
+            square
+          />
+
+          <div>
+            <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-orange-400">
+              Race winner
+            </p>
+
+            <h2 className="mt-1 text-2xl font-black text-white sm:text-3xl">
+              {winner.username}
+            </h2>
+
+            <p className="mt-1 font-sans text-xs text-zinc-400 sm:text-sm">
+              Ranked first with{" "}
+              <span className="font-semibold text-orange-400">
+                {formatMetric(winner.wpm)} WPM
+              </span>{" "}
+              and{" "}
+              <span className="font-semibold text-emerald-400">
+                {formatMetric(winner.accuracy)}%
+                accuracy
+              </span>
+              .
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 sm:min-w-[350px]">
+          <SummaryMetric
+            label="WPM"
+            value={formatMetric(winner.wpm)}
+            icon={<HiOutlineBolt size={17} />}
+            valueClass="text-orange-400"
+          />
+
+          <SummaryMetric
+            label="Accuracy"
+            value={`${formatMetric(
+              winner.accuracy
+            )}%`}
+            icon={
+              <HiOutlineCheckCircle size={17} />
+            }
+            valueClass="text-emerald-400"
+          />
+
+          <SummaryMetric
+            label="Progress"
+            value={`${formatMetric(
+              winner.progress
+            )}%`}
+            icon={
+              <HiOutlineTrophy size={17} />
+            }
+            valueClass="text-yellow-400"
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PlayerAvatar({
+  player,
+  sizeClass = "h-14 w-14",
+  textClass = "text-xl",
+  square = false,
+}) {
+  const borderRadius = square
+    ? "rounded-2xl"
+    : "rounded-full";
+
+  return (
+    <div className="relative shrink-0">
+      {player.profilePhoto ? (
+        <img
+          src={player.profilePhoto}
+          alt={`${player.username} profile`}
+          className={`${sizeClass} ${borderRadius} object-cover`}
+        />
+      ) : (
+        <span
+          className={`grid ${sizeClass} ${borderRadius} place-items-center bg-orange-500/10 font-black uppercase text-orange-400 ${textClass}`}
+        >
+          {player.username
+            ?.charAt(0)
+            .toUpperCase() || "?"}
+        </span>
+      )}
+
+      {player.rank === 1 && square && (
+        <span className="absolute -right-2 -top-3 grid h-8 w-8 rotate-12 place-items-center rounded-full bg-yellow-400 text-[#181C22] shadow-lg">
+          <FaCrown size={17} />
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -835,19 +1114,10 @@ function PodiumCard({ player }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="relative">
-          {player.profileAvatar ? (
-            <img
-              src={player.profileAvatar}
-              alt={`${player.username} profile`}
-              className="h-14 w-14 rounded-2xl object-cover"
-            />
-          ) : (
-            <span className="grid h-14 w-14 place-items-center rounded-2xl bg-orange-500/10 text-xl font-black uppercase text-orange-400">
-              {player.username
-                ?.charAt(0)
-                .toUpperCase() || "?"}
-            </span>
-          )}
+          <PlayerAvatar
+            player={player}
+            square
+          />
 
           <span
             className={`absolute -bottom-2 -right-2 grid h-7 w-7 place-items-center rounded-full text-xs font-black ${podiumStyle.badge}`}
@@ -877,16 +1147,28 @@ function PodiumCard({ player }) {
         {player.username}
       </h3>
 
+      <p
+        className={`mt-1 font-sans text-[10px] ${
+          player.finished
+            ? "text-emerald-400"
+            : "text-zinc-500"
+        }`}
+      >
+        {player.finished
+          ? "Completed the passage"
+          : "Time expired before completion"}
+      </p>
+
       <div className="mt-5 grid grid-cols-3 gap-2">
         <SmallMetric
           label="WPM"
-          value={Math.round(player.wpm)}
+          value={formatMetric(player.wpm)}
           valueClass="text-orange-400"
         />
 
         <SmallMetric
           label="Accuracy"
-          value={`${Math.round(
+          value={`${formatMetric(
             player.accuracy
           )}%`}
           valueClass="text-emerald-400"
@@ -894,7 +1176,7 @@ function PodiumCard({ player }) {
 
         <SmallMetric
           label="Progress"
-          value={`${Math.round(
+          value={`${formatMetric(
             player.progress
           )}%`}
         />
@@ -937,15 +1219,6 @@ function SmallMetric({
 }
 
 function LeaderboardRow({ player }) {
-  const rankStyle =
-    player.rank === 1
-      ? "bg-yellow-400 text-[#181C22]"
-      : player.rank === 2
-        ? "bg-zinc-300 text-[#181C22]"
-        : player.rank === 3
-          ? "bg-orange-700 text-white"
-          : "bg-white/[0.05] text-zinc-500";
-
   return (
     <article className="relative overflow-hidden rounded-2xl bg-black/15 p-4 transition hover:bg-black/20 sm:p-5">
       <div
@@ -957,25 +1230,15 @@ function LeaderboardRow({ player }) {
 
       <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center">
         <div className="flex min-w-0 items-center gap-3 lg:w-[280px]">
-          <span
-            className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-black ${rankStyle}`}
-          >
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[0.05] text-sm font-black text-zinc-400">
             {player.rank}
           </span>
 
-          {player.profileAvatar ? (
-            <img
-              src={player.profileAvatar}
-              alt={`${player.username} profile`}
-              className="h-11 w-11 shrink-0 rounded-full object-cover"
-            />
-          ) : (
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-orange-500/10 font-bold uppercase text-orange-400">
-              {player.username
-                ?.charAt(0)
-                .toUpperCase() || "?"}
-            </span>
-          )}
+          <PlayerAvatar
+            player={player}
+            sizeClass="h-11 w-11"
+            textClass="text-base"
+          />
 
           <div className="min-w-0">
             <h3 className="truncate font-semibold text-white">
@@ -1007,20 +1270,20 @@ function LeaderboardRow({ player }) {
         <div className="grid flex-1 grid-cols-3 gap-2 sm:grid-cols-6">
           <ResultMetric
             label="Progress"
-            value={`${Math.round(
+            value={`${formatMetric(
               player.progress
             )}%`}
           />
 
           <ResultMetric
             label="WPM"
-            value={Math.round(player.wpm)}
+            value={formatMetric(player.wpm)}
             valueClass="text-orange-400"
           />
 
           <ResultMetric
             label="Accuracy"
-            value={`${Math.round(
+            value={`${formatMetric(
               player.accuracy
             )}%`}
             valueClass="text-emerald-400"
@@ -1079,6 +1342,20 @@ function ResultMetric({
       </span>
     </div>
   );
+}
+
+/*
+ * Keeps decimal values such as 0.23 visible,
+ * while displaying whole numbers without .00.
+ */
+function formatMetric(value) {
+  const numericValue = toNumber(value);
+
+  if (Number.isInteger(numericValue)) {
+    return numericValue;
+  }
+
+  return Number(numericValue.toFixed(2));
 }
 
 export default ResultPage;

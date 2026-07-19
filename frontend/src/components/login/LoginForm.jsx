@@ -299,11 +299,18 @@ const LoginForm = () => {
                   aria-label="Go to Master of Keys home page"
                   className="inline-flex items-center gap-3 font-bold text-white"
                 >
-                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#FF9100] text-[#181C22] shadow-[0_12px_30px_rgba(255,145,0,0.2)]">
-                    <LockKeyhole size={20} strokeWidth={2.4} />
+                  <span className="grid h-10 w-10 place-items-center rounded-xl b-[#FF9100] text-[#181C22] shado-[0_12px_30px_rgba(255,145,0,0.2)]">
+                    {/* <LockKeyhole size={20} strokeWidth={2.4} /> */}
+                    <img
+                      className="h-[30px]"
+                      src="/keyboard-shortcut.1024x1020.png"
+                      alt="logo"
+                    />
                   </span>
 
-                  <span style={{ fontFamily: "Chelsea Market, system-ui" }}>Master of Keys</span>
+                  <span style={{ fontFamily: "Chelsea Market, system-ui" }}>
+                    Master of Keys
+                  </span>
                 </Link>
               </div>
 
@@ -325,7 +332,7 @@ const LoginForm = () => {
               <form
                 onSubmit={handleSubmit}
                 noValidate
-                className="mt-16 space-y-5"
+                className="md:mt-14 mt-8 space-y-5"
               >
                 {/* Identifier */}
                 <div>
@@ -336,9 +343,7 @@ const LoginForm = () => {
                     Username or email
                   </label>
 
-                  <div
-                    className={getInputContainerClasses("identifier")}
-                  >
+                  <div className={getInputContainerClasses("identifier")}>
                     <span className="pointer-events-none absolute left-4 text-zinc-600 transition-colors duration-200 group-focus-within:text-[#FF9100]">
                       {state.identifier.includes("@") ? (
                         <Mail size={18} />
@@ -438,9 +443,7 @@ const LoginForm = () => {
 
                     <button
                       type="button"
-                      onClick={() =>
-                        setShowPassword((previous) => !previous)
-                      }
+                      onClick={() => setShowPassword((previous) => !previous)}
                       disabled={isSubmitting}
                       aria-label={
                         showPassword ? "Hide password" : "Show password"
@@ -448,11 +451,7 @@ const LoginForm = () => {
                       aria-pressed={showPassword}
                       className="absolute right-3 grid h-9 w-9 place-items-center rounded-lg text-zinc-600 transition duration-200 hover:bg-white/[0.04] hover:text-[#FF9100] focus:outline-none focus:ring-2 focus:ring-[#FF9100]/25 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {showPassword ? (
-                        <EyeOff size={18} />
-                      ) : (
-                        <Eye size={18} />
-                      )}
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
 
@@ -481,10 +480,7 @@ const LoginForm = () => {
                   <span className="relative flex items-center gap-2">
                     {isSubmitting ? (
                       <>
-                        <LoaderCircle
-                          size={18}
-                          className="animate-spin"
-                        />
+                        <LoaderCircle size={18} className="animate-spin" />
                         Logging in...
                       </>
                     ) : (
@@ -542,8 +538,8 @@ const LoginForm = () => {
               </h1>
 
               <p className="mt-3 max-w-sm font-sans text-sm leading-6 text-zinc-300">
-                Return to your practice sessions, multiplayer rooms and
-                detailed typing insights.
+                Return to your practice sessions, multiplayer rooms and detailed
+                typing insights.
               </p>
 
               {/* <div className="mt-5 inline-flex items-center gap-3 rounded-2xl bg-[#111419]/65 px-4 py-3 shadow-[0_15px_45px_rgba(0,0,0,0.25)] backdrop-blur-xl">
