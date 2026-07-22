@@ -171,12 +171,12 @@ export default function ProfileUpload() {
           className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 p-4"
           onClick={() => setShowPreview(false)}
         >
-          <div className="relative" onClick={(e) => e.stopPropagation()}>
+          <div className="relative border border-orange-500/30 rounded-xl backdrop-blur-sm" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setShowPreview(false)}
-              className="absolute -right-3 -top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-lg"
+              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500/30 shadow-lg"
             >
-              <X size={18} />
+              <X size={18} color="orange" />
             </button>
 
             <img

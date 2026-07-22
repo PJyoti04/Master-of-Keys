@@ -109,6 +109,7 @@ export default function TextBoxTest({
       backspaceCount,
       score,
       penalty,
+      duration: initialTime,
       completionPercentage,
       typedText,
       text: typedText,
@@ -692,7 +693,7 @@ export default function TextBoxTest({
               event.stopPropagation();
               focusMobileInput();
             }}
-            className="sticky bottom-2 mt-5 block translate-x-1 rounded-full bg-[#181C22]/90 px-4 py-2 font-sans text-xs text-zinc-400 shadow-xl backdrop-blur-md transition hover:text-orange-500 md:hidden"
+            className="sticky bottom-2 mt-5 mx-auto flex w-fit items-center justify-center rounded-full bg-[#181C22]/90 px-4 py-2 font-sans text-xs text-zinc-400 shadow-xl backdrop-blur-md transition hover:text-orange-500 md:hidden"
           >
             Tap here to open keyboard
           </button>

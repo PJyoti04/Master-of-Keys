@@ -9,6 +9,7 @@ import authRoutes from "./routes/authRoutes.js";
 import typingRoutes from "./routes/typingRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import roomRoutes from "./routes/roomRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js"
 
 import errorHandler from "./middleware/errorHandler.js";
 import connectDB from "./config/db.js";
@@ -62,6 +63,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/user", typingRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/rooms", roomRoutes);
+app.use("/api/user/dashboard", dashboardRoutes);
 
 app.get("/health", (req, res) => {
   res.status(200).json({

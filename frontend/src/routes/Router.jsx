@@ -105,17 +105,19 @@ const router = createBrowserRouter([
           {
             path: "dashboard",
             element: <Dashboard />,
-            children: [
-              {
-                index: true,
-                element: <ProfileDisplay />,
-              },
-              {
+          },
+          {
                 path: "reset-password",
                 element: <ResetPasswordForm />,
-              },
-            ],
           },
+            // children: [
+            //   {
+            //     index: true,
+            //     element: <ProfileDisplay />,
+            //   },
+              
+            // ],
+          // },
         ],
       },
     ],

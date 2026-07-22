@@ -14,6 +14,7 @@ const saveSession = async (req, res) => {
       completionPercentage,
       typedText,
       graphData,
+      duration
     } = req.body;
 
     const session = await TypingSession.create({
@@ -31,6 +32,7 @@ const saveSession = async (req, res) => {
       completionPercentage,
       typedText,
       graphData,
+      duration
     });
 
     res.status(201).json({

@@ -1,420 +1,913 @@
-import { useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import {
   Check,
   Clock,
   Copy,
   Crown,
   Play,
-  Shield,
   Users,
   Wifi,
   WifiOff,
   X,
 } from "lucide-react";
+import { toast } from "react-toastify";
 
 import socket from "../utils/socket";
 import { useRoom } from "../context/RoomContext";
-import { toast } from "react-toastify";
-import { useState } from "react";
 import ConfirmModal from "../components/ui/ConfirmModal";
 
 function RoomLobby() {
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const { room, loading, currentUser, socketConnected, socketError } = useRoom();
+  const [
+    showCancelModal,
+    setShowCancelModal,
+  ] = useState(false);
+
+  const {
+    room,
+    loading,
+    currentUser,
+    socketConnected,
+    socketError,
+  } = useRoom();
 
   const navigate = useNavigate();
   const { roomCode } = useParams();
 
-  const currentUsername = currentUser?.username;
+  const currentUsername =
+    currentUser?.username;
 
-  const isPlayerHost = (player, index) =>
-    index === 0 || player.username === room?.createdByUsername;
+  const isPlayerHost = (
+    player,
+    index,
+  ) =>
+    index === 0 ||
+    player.username ===
+      room?.createdByUsername;
 
   const isHost =
-    room?.players?.[0]?.username === currentUsername ||
-    room?.createdByUsername === currentUsername;
+    room?.players?.[0]?.username ===
+      currentUsername ||
+    room?.createdByUsername ===
+      currentUsername;
 
-  const currentPlayer = room?.players?.find(
-    (player) => player.username === currentUsername
-  );
+  const currentPlayer =
+    room?.players?.find(
+      (player) =>
+        player.username ===
+        currentUsername,
+    );
 
-  const nonHostPlayers = room?.players?.filter(
-    (player, index) => !isPlayerHost(player, index)
-  );
+  const nonHostPlayers =
+    useMemo(() => {
+      if (
+        !Array.isArray(
+          room?.players,
+        )
+      ) {
+        return [];
+      }
+
+      return room.players.filter(
+        (player, index) =>
+          !isPlayerHost(
+            player,
+            index,
+          ),
+      );
+    }, [
+      room?.players,
+      room?.createdByUsername,
+    ]);
 
   const allPlayersReady =
     room?.players?.length > 1 &&
-    nonHostPlayers?.length > 0 &&
-    nonHostPlayers.every((player) => player.isReady);
+    nonHostPlayers.length > 0 &&
+    nonHostPlayers.every(
+      (player) =>
+        player.isReady,
+    );
 
   const canStartRace =
     room?.status === "waiting" &&
     socketConnected &&
     allPlayersReady &&
-    (isHost || room?.startPolicy === "anyone");
+    (isHost ||
+      room?.startPolicy ===
+        "anyone");
 
+  const connectedPlayers =
+    useMemo(() => {
+      if (
+        !Array.isArray(
+          room?.players,
+        )
+      ) {
+        return 0;
+      }
+
+      return room.players.filter(
+        (player) =>
+          player.isConnected,
+      ).length;
+    }, [room?.players]);
+
+  const readyPlayers =
+    useMemo(() => {
+      if (
+        !Array.isArray(
+          room?.players,
+        )
+      ) {
+        return 0;
+      }
+
+      return room.players.filter(
+        (player, index) =>
+          isPlayerHost(
+            player,
+            index,
+          ) ||
+          player.isReady,
+      ).length;
+    }, [
+      room?.players,
+      room?.createdByUsername,
+    ]);
 
   useEffect(() => {
-  if (!roomCode || !room) return;
+    if (!roomCode || !room) {
+      return undefined;
+    }
 
-  window.history.pushState({ roomLobby: true }, "");
+    window.history.pushState(
+      {
+        roomLobby: true,
+      },
+      "",
+    );
 
-  const handleBackButton = () => {
-    setShowCancelModal(true);
+    const handleBackButton =
+      () => {
+        setShowCancelModal(
+          true,
+        );
 
-    // Prevent browser from leaving immediately
-    window.history.pushState({ roomLobby: true }, "");
-  };
+        window.history.pushState(
+          {
+            roomLobby: true,
+          },
+          "",
+        );
+      };
 
-  window.addEventListener("popstate", handleBackButton);
-
-  return () => {
-    window.removeEventListener("popstate", handleBackButton);
-  };
-}, [roomCode, room]);
-
-  useEffect(() => {
-    if (!roomCode) return;
-
-    const handleRaceStarted = () => {
-      navigate(`/multiplayer/room/${roomCode}/race`, { replace: true });
-    };
-
-    const handleRoomCancelled = (data) => {
-      toast.info(data?.message || "Room was cancelled by host.");
-      navigate("/multiplayer", { replace: true });
-    };
-    
-    socket.on("race-started", handleRaceStarted);
-    socket.on("room-cancelled", handleRoomCancelled);
+    window.addEventListener(
+      "popstate",
+      handleBackButton,
+    );
 
     return () => {
-      socket.off("race-started", handleRaceStarted);
-      socket.off("room-cancelled", handleRoomCancelled);
+      window.removeEventListener(
+        "popstate",
+        handleBackButton,
+      );
+    };
+  }, [roomCode, room]);
+
+  useEffect(() => {
+    if (!roomCode) {
+      return undefined;
+    }
+
+    const handleRaceStarted =
+      () => {
+        navigate(
+          `/multiplayer/room/${roomCode}/race`,
+          {
+            replace: true,
+          },
+        );
+      };
+
+    const handleRoomCancelled =
+      (data) => {
+        toast.info(
+          data?.message ||
+            "Room was cancelled by host.",
+        );
+
+        navigate(
+          "/multiplayer",
+          {
+            replace: true,
+          },
+        );
+      };
+
+    socket.on(
+      "race-started",
+      handleRaceStarted,
+    );
+
+    socket.on(
+      "room-cancelled",
+      handleRoomCancelled,
+    );
+
+    return () => {
+      socket.off(
+        "race-started",
+        handleRaceStarted,
+      );
+
+      socket.off(
+        "room-cancelled",
+        handleRoomCancelled,
+      );
     };
   }, [roomCode, navigate]);
 
   const startRace = () => {
     if (!allPlayersReady) {
-      toast.error("All non-host players must be ready before starting the race.");
+      toast.error(
+        "All non-host players must be ready before starting the race.",
+      );
+
       return;
     }
 
-    socket.emit("start-race", { roomCode }, (response) => {
-      if (!response?.success) {
-        toast.info(response?.message || "Unable to start race.");
-      }
-    });
+    socket.emit(
+      "start-race",
+      {
+        roomCode,
+      },
+      (response) => {
+        if (
+          !response?.success
+        ) {
+          toast.info(
+            response?.message ||
+              "Unable to start race.",
+          );
+        }
+      },
+    );
   };
 
   const toggleReady = () => {
     if (!currentPlayer) {
-      toast.info("You are not a member of this room.");
+      toast.info(
+        "You are not a member of this room.",
+      );
+
       return;
     }
 
-    socket.emit("player-ready", {
-      roomCode,
-      isReady: !currentPlayer.isReady,
-    });
+    socket.emit(
+      "player-ready",
+      {
+        roomCode,
+        isReady:
+          !currentPlayer.isReady,
+      },
+    );
   };
 
   const cancelRoom = () => {
     setShowCancelModal(true);
   };
 
-const confirmCancelRoom = () => {
-  setShowCancelModal(false);
+  const confirmCancelRoom =
+    () => {
+      setShowCancelModal(false);
 
-  if (isHost) {
-    socket.emit("cancel-room", { roomCode }, (response) => {
-      if (!response?.success) {
-        toast.error(response?.message || "Unable to cancel room.");
+      if (isHost) {
+        socket.emit(
+          "cancel-room",
+          {
+            roomCode,
+          },
+          (response) => {
+            if (
+              !response?.success
+            ) {
+              toast.error(
+                response?.message ||
+                  "Unable to cancel room.",
+              );
+
+              return;
+            }
+
+            navigate(
+              "/multiplayer",
+              {
+                replace: true,
+              },
+            );
+          },
+        );
+
         return;
       }
 
-      navigate("/multiplayer", { replace: true });
-    });
+      socket.emit(
+        "leave-room",
+        {
+          roomCode,
+        },
+        (response) => {
+          if (
+            !response?.success
+          ) {
+            toast.error(
+              response?.message ||
+                "Unable to leave room.",
+            );
 
-    return;
-  }
+            return;
+          }
 
-  socket.emit("leave-room", { roomCode }, (response) => {
-    if (!response?.success) {
-      toast.error(response?.message || "Unable to leave room.");
-      return;
-    }
+          navigate(
+            "/multiplayer",
+            {
+              replace: true,
+            },
+          );
+        },
+      );
+    };
 
-    navigate("/multiplayer", { replace: true });
-  });
-};
+  const copyRoomCode =
+    async () => {
+      try {
+        await navigator.clipboard.writeText(
+          room.roomCode,
+        );
 
-  const copyRoomCode = async () => {
-    try {
-      await navigator.clipboard.writeText(room.roomCode);
-      toast.success("Copied")
-    } catch {
-      toast.error("Unable to copy room code.");
-    }
-  };
+        toast.success(
+          "Room code copied.",
+        );
+      } catch {
+        toast.error(
+          "Unable to copy room code.",
+        );
+      }
+    };
 
-  const getInitials = (username = "") => {
+  const getInitials = (
+    username = "",
+  ) => {
     return username
       .split(" ")
-      .map((part) => part[0])
+      .filter(Boolean)
+      .map(
+        (part) => part[0],
+      )
       .join("")
       .slice(0, 2)
       .toUpperCase();
   };
 
-  const formatDuration = (seconds = 0) => {
-    if (seconds < 60) return `${seconds}s`;
+  const formatDuration = (
+    seconds = 0,
+  ) => {
+    const safeSeconds =
+      Math.max(
+        0,
+        Number(seconds) || 0,
+      );
 
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
+    if (safeSeconds < 60) {
+      return `${safeSeconds}s`;
+    }
 
-    if (remainingSeconds === 0) return `${minutes} min`;
+    const hours =
+      Math.floor(
+        safeSeconds / 3600,
+      );
+
+    const minutes =
+      Math.floor(
+        (safeSeconds % 3600) /
+          60,
+      );
+
+    const remainingSeconds =
+      safeSeconds % 60;
+
+    if (hours > 0) {
+      if (
+        minutes === 0 &&
+        remainingSeconds === 0
+      ) {
+        return `${hours} hr`;
+      }
+
+      if (
+        remainingSeconds === 0
+      ) {
+        return `${hours}h ${minutes}m`;
+      }
+
+      return `${hours}h ${minutes}m ${remainingSeconds}s`;
+    }
+
+    if (
+      remainingSeconds === 0
+    ) {
+      return `${minutes} min`;
+    }
 
     return `${minutes}m ${remainingSeconds}s`;
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#181C22] flex items-center justify-center text-white">
-        Loading room...
+      <div className="flex min-h-[calc(100dvh-64px)] items-center justify-center bg-[#181C22] px-4 text-white sm:min-h-[calc(100vh-80px)]">
+        <div className="flex items-center gap-3 text-sm text-zinc-400">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-700 border-t-orange-500" />
+
+          Loading room...
+        </div>
       </div>
     );
   }
 
   if (!room) {
     return (
-      <div className="min-h-screen bg-[#181C22] flex items-center justify-center text-red-400">
-        Room not found
+      <div className="flex min-h-[calc(100dvh-64px)] items-center justify-center bg-[#181C22] px-4 text-center text-red-400 sm:min-h-[calc(100vh-80px)]">
+        Room not found.
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-[#181C22] text-white py-2">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-4">
-          {/* <p className="text-2xl text-center text-orange-400 underline font-semibold mb-2">
-            Multiplayer Lobby
-          </p> */}
+    <main className="relative min-h-[calc(100dvh-64px)] overflow-x-hidden bg-[#181C22] pb-28 text-white sm:min-h-[calc(100vh-80px)] sm:pb-8">
+      <div className="pointer-events-none absolute -left-24 top-16 h-64 w-64 rounded-full bg-orange-500/[0.05] blur-[100px]" />
 
-          {/* <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-            {room.roomName}
-          </h1> */}
+      <div className="pointer-events-none absolute -right-24 top-1/2 h-72 w-72 rounded-full bg-orange-500/[0.04] blur-[110px]" />
+
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-3 py-3 sm:px-5 sm:py-6 lg:px-8">
+        {/* Mobile room header */}
+        <section className="mb-3 rounded-2xl border border-white/[0.07] bg-[#20252D]/90 p-3 sm:mb-6 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-orange-500/10 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-orange-400 sm:text-[10px]">
+                  Multiplayer lobby
+                </span>
+
+                <span className="rounded-full border border-orange-500/20 bg-orange-500/[0.08] px-2.5 py-1 text-[9px] capitalize text-orange-300 sm:text-[10px]">
+                  {room.status}
+                </span>
+              </div>
+
+              <h1 className="mt-2 truncate text-xl font-black tracking-[-0.03em] text-white sm:text-3xl">
+                {room.roomName ||
+                  "Typing Room"}
+              </h1>
+
+              <p className="mt-1 hidden text-sm text-zinc-500 sm:block">
+                Wait for everyone to
+                get ready, then start
+                the race.
+              </p>
+            </div>
+
+            <div
+              className={`flex shrink-0 items-center gap-1.5 rounded-xl px-2.5 py-2 text-[10px] font-medium sm:px-3 sm:text-xs ${
+                socketConnected
+                  ? "bg-emerald-500/10 text-emerald-400"
+                  : "bg-red-500/10 text-red-400"
+              }`}
+            >
+              {socketConnected ? (
+                <Wifi size={14} />
+              ) : (
+                <WifiOff
+                  size={14}
+                />
+              )}
+
+              <span className="hidden min-[390px]:inline">
+                {socketConnected
+                  ? "Connected"
+                  : "Disconnected"}
+              </span>
+            </div>
+          </div>
 
           {socketError && (
-            <p className="text-sm text-red-400">Error: {socketError}</p>
+            <p className="mt-3 rounded-xl bg-red-500/10 px-3 py-2 text-xs text-red-300">
+              {socketError}
+            </p>
           )}
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
-          <div>
-            <div className="flex items-center justify-between mb-5 px-3">
-              <h2 className="text-lg font-semibold">Room Info</h2>
+          {/* Compact room details */}
+          <div className="mt-3 lg:hidden grid items-cente justify-betwee grid-cols-2 gap-2 sm:mt-5 sm:grid-cols-4">
+            <div className="col-span-2 min-w-0 rounded-xl bg-[#181C22] px-3 py-2.5 sm:px-4 sm:py-3">
+              <p className="text-[9px] uppercase tracking-wide text-zinc-600 sm:text-[10px]">
+                Room code
+              </p>
 
-              <span className="text-xs px-3 py-1 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/30 capitalize">
+              <div className="mt-0.5 flex items-center gap-2">
+                <strong className="truncate font-mono text-base tracking-[0.16em] text-orange-400 sm:text-lg">
+                  {room.roomCode}
+                </strong>
+
+                <button
+                  type="button"
+                  onClick={
+                    copyRoomCode
+                  }
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-orange-500/10 text-orange-400 transition active:scale-95 hover:bg-orange-500/20"
+                  aria-label="Copy room code"
+                  title="Copy room code"
+                >
+                  <Copy size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-[#181C22] px-3 py-3 text-center sm:px-4 sm:py-3">
+              <div className="flex items-center justify-center gap-1.5">
+                <Clock
+                  size={14}
+                  className="text-orange-400"
+                />
+
+                <strong className="text-xs sm:text-sm">
+                  {formatDuration(
+                    room.duration,
+                  )}
+                </strong>
+              </div>
+
+              <p className="mt-0.5 text-[9px] uppercase tracking-wide text-zinc-600">
+                Duration
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-[#181C22] px-4 py-3 text-center sm:px-4 sm:py-3">
+              <div className="flex items-center justify-center gap-1.5">
+                <Users
+                  size={15}
+                  className="text-orange-400"
+                />
+
+                <strong className="text-xs sm:text-sm">
+                  {room.players
+                    ?.length || 0}
+                  /{room.maxPlayers}
+                </strong>
+              </div>
+
+              <p className="mt-0.5 text-[9px] uppercase tracking-wide text-zinc-600">
+                Players
+              </p>
+            </div>
+
+            <div className="hidden rounded-xl bg-[#181C22] px-4 py-3 text-center sm:block">
+              <div className="flex items-center justify-center gap-1.5">
+                <Check
+                  size={15}
+                  className="text-emerald-400"
+                />
+
+                <strong className="text-sm">
+                  {readyPlayers}/
+                  {room.players
+                    ?.length || 0}
+                </strong>
+              </div>
+
+              <p className="mt-0.5 text-[9px] uppercase tracking-wide text-zinc-600">
+                Ready
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-6">
+          {/* Desktop room information */}
+          <aside className="hidden rounded-2xl border border-white/[0.07] bg-[#20252D] p-4 lg:block">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">
+                Room information
+              </h2>
+
+              <span className="rounded-full bg-orange-500/10 px-2.5 py-1 text-[9px] uppercase tracking-wide text-orange-400">
                 {room.status}
               </span>
             </div>
-            <aside className="bg-[#20252D] border border-white/10 rounded-2xl p-5 h-fit">
-              <div className="space-y-4">
-                <div className="bg-[#181C22] rounded-xl p-4 border border-white/10">
-                  <p className="text-xs text-zinc-400 mb-1">Room Name</p>
-                  <p className="text-xl font-bold tracking-widest text-orange-400">
-                    {room?.roomName}
+
+            <div className="mt-4 space-y-3">
+              <div className="rounded-xl bg-[#181C22] p-3">
+                <p className="text-[10px] uppercase tracking-wide text-zinc-600">
+                  Room name
+                </p>
+
+                <p className="mt-1 break-words font-semibold text-white">
+                  {room.roomName}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-[#181C22] p-3">
+                <p className="text-[10px] uppercase tracking-wide text-zinc-600">
+                  Room code
+                </p>
+
+                <div className="mt-1 flex items-center justify-between gap-3">
+                  <strong className="font-mono tracking-[0.16em] text-orange-400">
+                    {room.roomCode}
+                  </strong>
+
+                  <button
+                    type="button"
+                    onClick={
+                      copyRoomCode
+                    }
+                    className="grid h-8 w-8 place-items-center rounded-lg bg-orange-500/10 text-orange-400 transition hover:bg-orange-500/20"
+                    title="Copy room code"
+                  >
+                    <Copy
+                      size={15}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-[#181C22] p-3">
+                  <Clock
+                    size={17}
+                    className="text-orange-400"
+                  />
+
+                  <p className="mt-2 text-[10px] text-zinc-500">
+                    Duration
                   </p>
-                </div>
 
-                <div className="bg-[#181C22] rounded-xl p-4 border border-white/10">
-                  <p className="text-xs text-zinc-400 mb-1">Room Code</p>
-
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-xl font-bold tracking-widest text-orange-400">
-                      {room.roomCode}
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={copyRoomCode}
-                      className="p-2 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 transition"
-                      title="Copy room code"
-                    >
-                      <Copy size={17} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-[#181C22] rounded-xl p-4 border border-white/10">
-                    <Clock className="text-orange-400 mb-3" size={20} />
-                    <p className="text-xs text-zinc-400">Duration</p>
-                    <p className="font-semibold">
-                      {formatDuration(room.duration)}
-                    </p>
-                  </div>
-
-                  <div className="bg-[#181C22] rounded-xl p-4 border border-white/10">
-                    <Users className="text-orange-400 mb-3" size={20} />
-                    <p className="text-xs text-zinc-400">Players</p>
-                    <p className="font-semibold">
-                      {room.players?.length || 0}/{room.maxPlayers}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-[#181C22] rounded-xl p-4 border border-white/10">
-                  <div className="flex items-center gap-3">
-                    {socketConnected ? (
-                      <Wifi className="text-green-400" size={20} />
-                    ) : (
-                      <WifiOff className="text-red-400" size={20} />
+                  <p className="text-sm font-semibold">
+                    {formatDuration(
+                      room.duration,
                     )}
-
-                    <div>
-                      {/* <p className="text-xs text-zinc-400">Socket</p> */}
-                      <p
-                        className={`font-semibold ${
-                          socketConnected ? "text-green-400" : "text-red-400"
-                        }`}
-                      >
-                        {socketConnected ? "Connected" : "Disconnected"}
-                      </p>
-                    </div>
-                  </div>
+                  </p>
                 </div>
 
-                {/* <div className="bg-[#181C22] rounded-xl p-4 border border-white/10">
-                  <Shield className="text-orange-400 mb-3" size={20} />
-                  <p className="text-xs text-zinc-400">Start Policy</p>
-                  <p className="font-semibold capitalize">
-                    {room.startPolicy === "anyone"
-                      ? "Anyone can start"
-                      : "Host only"}
-                  </p>
-                </div> */}
+                <div className="rounded-xl bg-[#181C22] p-3">
+                  <Users
+                    size={17}
+                    className="text-orange-400"
+                  />
 
-                {!allPlayersReady && room.status === "waiting" && (
-                  <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-300">
-                    Waiting for players to be ready.
+                  <p className="mt-2 text-[10px] text-zinc-500">
+                    Players
+                  </p>
+
+                  <p className="text-sm font-semibold">
+                    {room.players
+                      ?.length || 0}
+                    /{room.maxPlayers}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-[#181C22] p-3">
+                <div className="flex items-center gap-3">
+                  {socketConnected ? (
+                    <Wifi
+                      className="text-emerald-400"
+                      size={18}
+                    />
+                  ) : (
+                    <WifiOff
+                      className="text-red-400"
+                      size={18}
+                    />
+                  )}
+
+                  <div>
+                    <p className="text-[10px] text-zinc-500">
+                      Connection
+                    </p>
+
+                    <p
+                      className={`text-sm font-semibold ${
+                        socketConnected
+                          ? "text-emerald-400"
+                          : "text-red-400"
+                      }`}
+                    >
+                      {socketConnected
+                        ? "Connected"
+                        : "Disconnected"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {!allPlayersReady &&
+                room.status ===
+                  "waiting" && (
+                  <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/[0.08] p-3 text-xs leading-5 text-yellow-300">
+                    Waiting for all
+                    non-host players
+                    to become ready.
                   </div>
                 )}
+            </div>
+          </aside>
+
+          {/* Players */}
+          <section className="min-w-0">
+            <div className="mb-3 flex items-end justify-between gap-3 px-1">
+              <div>
+                <h2 className="text-lg font-semibold sm:text-xl">
+                  Players
+                </h2>
+
+                <p className="mt-0.5 text-[10px] text-zinc-500 sm:text-xs">
+                  {connectedPlayers}{" "}
+                  online ·{" "}
+                  {readyPlayers} ready
+                </p>
               </div>
-            </aside>
-          </div>
 
-          <main>
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Players</h2>
-
-              <span className="text-sm text-zinc-400">
-                {room.players?.length || 0} joined
+              <span className="rounded-full bg-black/20 px-2.5 py-1 text-[10px] text-zinc-400 sm:text-xs">
+                {room.players
+                  ?.length || 0}{" "}
+                joined
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 px-4">
-              {room.players.map((player, index) => {
-                const host = isPlayerHost(player, index);
-                const isMe = player.username === currentUsername;
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+              {room.players.map(
+                (
+                  player,
+                  index,
+                ) => {
+                  const host =
+                    isPlayerHost(
+                      player,
+                      index,
+                    );
 
-                return (
-                  <div
-                    key={player.user || player.username}
-                    className="relative bg-[#20252D] border border-white/10 rounded-2xl p-4 hover:border-orange-500/40 transition"
-                  >
-                    <div
-                      className={`absolute top-4 right-4 flex items-center gap-1 text-[11px] px-2 py-1 rounded-full border ${
-                        player.isConnected
-                          ? "bg-green-500/10 text-green-400 border-green-500/30"
-                          : "bg-zinc-500/10 text-zinc-400 border-zinc-500/30"
+                  const isMe =
+                    player.username ===
+                    currentUsername;
+
+                  return (
+                    <article
+                      key={
+                        player.user ||
+                        player.username
+                      }
+                      className={`relative overflow-hidden rounded-2xl border p-3 transition sm:p-4 ${
+                        isMe
+                          ? "border-orange-500/30 bg-orange-500/[0.07]"
+                          : "border-white/[0.07] bg-[#20252D]"
                       }`}
                     >
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          player.isConnected ? "bg-green-400" : "bg-zinc-500"
-                        }`}
-                      />
-                      {player.isConnected ? "Online" : "Offline"}
-                    </div>
+                      {isMe && (
+                        <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-orange-500" />
+                      )}
 
-                    {host && (
-                      <span
-                        className="inline-flex absolute -left-3 -top-1.5 -rotate-12 items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-orange-500 text-white"
-                        title="Host"
-                      >
-                        <Crown size={12} />
-                        Host
-                      </span>
-                    )}
+                      <div className="flex items-center gap-3">
+                        <div className="relative shrink-0">
+                          <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-orange-500/20 bg-orange-500/10 text-sm font-bold text-orange-400 sm:h-14 sm:w-14 sm:rounded-2xl">
+                            {player.profilePhoto ? (
+                              <img
+                                src={
+                                  player.profilePhoto
+                                }
+                                alt={
+                                  player.username
+                                }
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              getInitials(
+                                player.username,
+                              )
+                            )}
+                          </div>
 
-                    <div className="flex items-center gap-4 pr-20">
-                      <div className="h-14 w-14 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center overflow-hidden text-orange-400 font-bold">
-                        {player.profilePhoto ? (
-                          <img
-                            src={player.profilePhoto}
-                            alt={player.username}
-                            className="h-full w-full object-cover"
+                          <span
+                            className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#20252D] ${
+                              player.isConnected
+                                ? "bg-emerald-400"
+                                : "bg-zinc-500"
+                            }`}
                           />
-                        ) : (
-                          getInitials(player.username)
-                        )}
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold truncate">
-                            {player.username}
-                            {isMe ? " (You)" : ""}
-                          </p>
                         </div>
 
-                        <div className="mt-2">
-                          {/* {host ? (
-                            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/30">
-                              Host controls race
-                            </span>
-                          ) :  */}
-                          {player.isReady ? (
-                            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/30">
-                              <span className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center text-white">
-                                <Check size={11} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <p className="truncate text-sm font-semibold text-white">
+                              {
+                                player.username
+                              }
+                            </p>
+
+                            {isMe && (
+                              <span className="shrink-0 rounded-full bg-orange-500/15 px-1.5 py-0.5 text-[8px] font-semibold uppercase text-orange-400">
+                                You
                               </span>
-                              Ready
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/30">
-                              <span className="h-2 w-2 rounded-full bg-yellow-400" />
-                              Waiting
-                            </span>
-                          )}
+                            )}
+                          </div>
+
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            {host && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 px-2 py-0.5 text-[9px] text-orange-400">
+                                <Crown
+                                  size={10}
+                                />
+                                Host
+                              </span>
+                            )}
+
+                            {!host &&
+                              (player.isReady ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] text-emerald-400">
+                                  <Check
+                                    size={10}
+                                  />
+                                  Ready
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/10 px-2 py-0.5 text-[9px] text-yellow-400">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
+                                  Waiting
+                                </span>
+                              ))}
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                          <span
+                            className={`text-[9px] font-medium ${
+                              player.isConnected
+                                ? "text-emerald-400"
+                                : "text-zinc-500"
+                            }`}
+                          >
+                            {player.isConnected
+                              ? "Online"
+                              : "Offline"}
+                          </span>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
+                    </article>
+                  );
+                },
+              )}
             </div>
 
-            <div className="mt-8 flex flex-col sm:flex-row justify-end gap-3">
+            {!allPlayersReady &&
+              room.status ===
+                "waiting" && (
+                <div className="mt-3 rounded-xl border border-yellow-500/20 bg-yellow-500/[0.08] px-3 py-2.5 text-center text-xs text-yellow-300 lg:hidden">
+                  Waiting for all
+                  players to become
+                  ready.
+                </div>
+              )}
+
+            {/* Desktop buttons */}
+            <div className="mt-6 hidden items-center justify-end gap-3 sm:flex">
               <button
                 type="button"
                 onClick={cancelRoom}
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#20252D] border border-white/10 text-zinc-300 hover:text-white hover:border-red-500/40 hover:bg-red-500/10 transition"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#20252D] px-5 py-3 text-sm text-zinc-300 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-white"
               >
-                <X size={18} />
-                Cancel
+                <X size={17} />
+
+                {isHost
+                  ? "Dissolve room"
+                  : "Leave room"}
               </button>
 
               {!isHost && (
                 <button
                   type="button"
-                  onClick={toggleReady}
-                  disabled={!socketConnected || room.status !== "waiting"}
-                  className={`inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                  onClick={
+                    toggleReady
+                  }
+                  disabled={
+                    !socketConnected ||
+                    room.status !==
+                      "waiting"
+                  }
+                  className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
                     currentPlayer?.isReady
                       ? "bg-yellow-500 text-black hover:bg-yellow-400"
                       : "bg-orange-500 text-white hover:bg-orange-600"
@@ -422,48 +915,150 @@ const confirmCancelRoom = () => {
                 >
                   {currentPlayer?.isReady ? (
                     <>
-                      <X size={18} />
-                      Cancel Ready
+                      <X
+                        size={17}
+                      />
+                      Cancel ready
                     </>
                   ) : (
                     <>
-                      <Check size={18} />
+                      <Check
+                        size={17}
+                      />
                       Ready
                     </>
                   )}
                 </button>
               )}
 
-              {(isHost || room.startPolicy === "anyone") && (
+              {(isHost ||
+                room.startPolicy ===
+                  "anyone") && (
                 <button
                   type="button"
-                  onClick={startRace}
-                  disabled={!canStartRace}
-                  title={!allPlayersReady ? "Players must be ready first" : ""}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={
+                    startRace
+                  }
+                  disabled={
+                    !canStartRace
+                  }
+                  title={
+                    !allPlayersReady
+                      ? "Players must be ready first"
+                      : ""
+                  }
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Play size={18} />
-                  Start Race
+                  <Play size={17} />
+                  Start race
                 </button>
               )}
             </div>
-          </main>
+          </section>
         </div>
       </div>
+
+      {/* Mobile fixed action bar */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] bg-[#181C22]/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:hidden">
+        <div className="mx-auto flex max-w-7xl gap-2">
+          <button
+            type="button"
+            onClick={cancelRoom}
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-white/10 bg-[#20252D] text-zinc-300 transition active:scale-95"
+            aria-label={
+              isHost
+                ? "Dissolve room"
+                : "Leave room"
+            }
+            title={
+              isHost
+                ? "Dissolve room"
+                : "Leave room"
+            }
+          >
+            <X size={19} />
+          </button>
+
+          {!isHost && (
+            <button
+              type="button"
+              onClick={toggleReady}
+              disabled={
+                !socketConnected ||
+                room.status !==
+                  "waiting"
+              }
+              className={`inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${
+                currentPlayer?.isReady
+                  ? "bg-yellow-500 text-black"
+                  : "bg-orange-500 text-white"
+              }`}
+            >
+              {currentPlayer?.isReady ? (
+                <>
+                  <X size={18} />
+                  Cancel ready
+                </>
+              ) : (
+                <>
+                  <Check
+                    size={18}
+                  />
+                  Ready
+                </>
+              )}
+            </button>
+          )}
+
+          {(isHost ||
+            room.startPolicy ===
+              "anyone") && (
+            <button
+              type="button"
+              onClick={startRace}
+              disabled={
+                !canStartRace
+              }
+              className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 text-sm font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Play size={18} />
+
+              <span>
+                Start race
+              </span>
+            </button>
+          )}
+        </div>
+      </div>
+
       <ConfirmModal
         open={showCancelModal}
-        title={isHost ? "Dissolve Room" : "Leave Room"}
+        title={
+          isHost
+            ? "Dissolve Room"
+            : "Leave Room"
+        }
         message={
           isHost
             ? "You are the host. Cancelling this room will remove it permanently and every player will be returned to the multiplayer lobby."
             : "Are you sure you want to leave this room?"
         }
-        confirmText={isHost ? "Dissolve Room" : "Leave"}
+        confirmText={
+          isHost
+            ? "Dissolve Room"
+            : "Leave"
+        }
         confirmColor="bg-orange-500 hover:bg-orange-600"
-        onCancel={() => setShowCancelModal(false)}
-        onConfirm={confirmCancelRoom}
+        onCancel={() =>
+          setShowCancelModal(
+            false,
+          )
+        }
+        onConfirm={
+          confirmCancelRoom
+        }
       />
-    </div>
+    </main>
   );
 }
 

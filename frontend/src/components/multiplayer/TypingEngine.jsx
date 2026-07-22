@@ -533,9 +533,9 @@ function TypingEngine({
   };
 
   return (
-    <section className="w-full">
+    <section className="w-full flex flex-col">
       {/* Local player statistics */}
-      <div className="mb-3 grid grid-cols-4 gap-2 sm:mb-4 sm:gap-3">
+      <div className="mb-3 grid grid-cols-4 gap-2 order-3 sm:mb-4 sm:gap-3 sm:order-none">
         <div className="rounded-xl bg-black/20 px-2 py-2.5 text-center sm:px-3">
           <strong className="block text-base font-bold tabular-nums text-white sm:text-lg">
             {currentStats.wpm}
@@ -643,7 +643,7 @@ function TypingEngine({
               event.stopPropagation();
               focusTypingInput();
             }}
-            className="sticky bottom-2 left-1/2 mt-5 flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#181C22]/95 px-4 py-2 font-sans text-xs text-zinc-400 shadow-xl backdrop-blur-xl transition hover:text-orange-500"
+            className="sticky bottom-2 mt-5 mx-auto flex w-fit items-center justify-centerr gap-2 rounded-full bg-[#181C22]/95 px-4 py-2 font-sans text-xs text-zinc-400 shadow-xl backdrop-blur-xl transition hover:text-orange-500"
           >
             {/* <HiOutlineKeyboard size={16} /> */}
 
