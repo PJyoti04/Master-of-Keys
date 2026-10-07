@@ -18,6 +18,7 @@ import ResultPage from "../pages/ResultPage.jsx";
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
 import Loader from "../components/ui/Loader.jsx";
+import ForgotPassword from "../components/ui/ForgotPassword.jsx";
 
 function ProtectedRoute() {
   const { user, loading } = useContext(AuthContext);
@@ -62,6 +63,14 @@ const router = createBrowserRouter([
           {
             path: "login",
             element: <Login />,
+          },
+          {
+            path: "forgot-password",
+            element: (
+              <div className="min-h-[calc(100vh-80px)] w-full bg-[var(--bg)] font-mono text-white flex items-center justify-center p-4">
+                <ForgotPassword isModal={false} />
+              </div>
+            ),
           },
         ],
       },

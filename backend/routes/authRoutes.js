@@ -6,6 +6,7 @@ import {
   login,
   logout,
   sendResetOtp,
+  forgotPassword,
   verifyResetOtp,
   resetPassword,
 } from "../controllers/authController.js";
@@ -19,5 +20,10 @@ router.post("/logout", logout);
 router.post("/sendotp", protect, sendResetOtp);
 router.post("/verify", protect, verifyResetOtp);
 router.post("/resetpass", protect, resetPassword);
+
+// Public password recovery endpoints
+router.post("/forgot-password", forgotPassword);
+router.post("/verify-reset-otp", verifyResetOtp);
+router.post("/reset-password", resetPassword);
 
 export default router;

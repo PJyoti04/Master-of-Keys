@@ -95,18 +95,18 @@ const getCurrentUser = async (req, res) => {
 
 // Send OTP for password reset
 const sendResetOtp = async (req, res) => {
-  // const { email } = req.body;
-  const email = req.user.email;
+  const email = req.user?.email || req.body?.email;
+  if (!email) {
+    return res.status(400).json({ message: "Email is required.", type: "error" });
+  }
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found", type: "error" });
     }
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // const expiration = new Date(Date.now() + 10 * 60 * 1000);
 
     // Save OTP to DB, remove existing OTPs for user
     await ResetOtp.deleteMany({ userId: user._id });
@@ -115,46 +115,91 @@ const sendResetOtp = async (req, res) => {
     // Send OTP via email
     await sendOtpEmail(user.email, otp);
 
-    res.json({ message: "OTP sent to email" });
+    res.json({ message: "OTP sent to email", type: "success" });
   } catch (error) {
-    res.status(500).json({ message: "OTP sending error" });
+    res.status(500).json({ message: "OTP sending error", type: "error" });
+  }
+};
+
+// Send OTP for forgot password (unauthenticated by email)
+const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.trim()) {
+    return res.status(400).json({ message: "Please enter your registered email address.", type: "error" });
+  }
+
+  try {
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    if (!user) {
+      return res.status(404).json({ message: "No account found with this email address.", type: "error" });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Save OTP to DB, remove existing OTPs for user
+    await ResetOtp.deleteMany({ userId: user._id });
+    await ResetOtp.create({ userId: user._id, otp, createdAt: new Date() });
+
+    // Send OTP via email
+    await sendOtpEmail(user.email, otp);
+
+    res.json({ message: "OTP sent to your email successfully.", type: "success" });
+  } catch (error) {
+    console.error("Forgot password OTP sending error:", error);
+    res.status(500).json({ message: "Failed to send OTP. Please try again later.", type: "error" });
   }
 };
 
 // Verify OTP
 const verifyResetOtp = async (req, res) => {
-  const { otp } = req.body;
-  const email = req.user.email;
+  const { otp, email: bodyEmail } = req.body;
+  const email = req.user?.email || bodyEmail;
+  if (!email || !otp) {
+    return res.status(400).json({ message: "Email and OTP are required.", type: "error" });
+  }
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found", type: "error" });
     }
 
-    const record = await ResetOtp.findOne({ userId: user._id});
-    if (!record) {
-      return res.status(400).json({ message: "Invalid OTP or has been expired" });
+    const record = await ResetOtp.findOne({ userId: user._id });
+    if (!record || record.otp !== otp.toString().trim()) {
+      return res.status(400).json({ message: "Invalid OTP or has been expired", type: "error" });
     }
-    // await ResetOtp.deleteMany({ userId: user._id });
 
-    res.json({ message: "OTP verified" });
+    res.json({ message: "OTP verified", type: "success" });
   } catch (error) {
-    res.status(500).json({ message: "OTP verifying error" });
+    res.status(500).json({ message: "OTP verifying error", type: "error" });
   }
 };
 
 // Reset password after OTP verification
 const resetPassword = async (req, res) => {
-  const { newPassword , confirmPassword } = req.body;
-    const email = req.user.email;
+  const { newPassword, confirmPassword, otp, email: bodyEmail } = req.body;
+  const email = req.user?.email || bodyEmail;
+  if (!email) {
+    return res.status(400).json({ message: "Email is required.", type: "error" });
+  }
   try {
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters.", type: "error" });
+    }
     if (newPassword !== confirmPassword) {
-      return res.status(400).json({ message: "Passwords do not match" });
+      return res.status(400).json({ message: "Passwords do not match.", type: "error" });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found", type: "error" });
+    }
+
+    if (!req.user) {
+      const record = await ResetOtp.findOne({ userId: user._id });
+      if (!record || (otp && record.otp !== otp.toString().trim())) {
+        return res.status(400).json({ message: "Invalid or expired OTP session.", type: "error" });
+      }
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -166,9 +211,9 @@ const resetPassword = async (req, res) => {
     // Delete OTP after successful reset
     await ResetOtp.deleteMany({ userId: user._id });
 
-    res.json({ message: "Password reset successful" });
+    res.json({ message: "Password reset successful", type: "success" });
   } catch (error) {
-    res.status(500).json({ message: "Password reset error" });
+    res.status(500).json({ message: "Password reset error", type: "error" });
   }
 };
 
@@ -178,6 +223,7 @@ export {
   logout,
   getCurrentUser,
   sendResetOtp,
+  forgotPassword,
   verifyResetOtp,
   resetPassword,
-}
+};

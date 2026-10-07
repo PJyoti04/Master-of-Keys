@@ -179,7 +179,7 @@ const Features = () => {
             end: "bottom center",
             scrub: true,
           },
-        }
+        },
       );
 
       gsap.to(keyboardFloatRef.current, {
@@ -194,12 +194,13 @@ const Features = () => {
         if (!featureElement) return;
 
         const feature = featureData[index];
-        const featureContent =
-          featureElement.querySelector(".feature-content");
-        const featureImage =
-          featureElement.querySelector(".feature-image-frame");
-        const featureNumber =
-          featureElement.querySelector(".feature-background-number");
+        const featureContent = featureElement.querySelector(".feature-content");
+        const featureImage = featureElement.querySelector(
+          ".feature-image-frame",
+        );
+        const featureNumber = featureElement.querySelector(
+          ".feature-background-number",
+        );
 
         gsap.from(featureContent, {
           y: 80,
@@ -292,9 +293,7 @@ const Features = () => {
         </div>
 
         <h2 className="m-0 text-[clamp(3rem,6.6vw,7.4rem)] font-black leading-[0.94] tracking-[-0.075em] text-zinc-100 [perspective:1000px] max-sm:text-[clamp(2.8rem,14vw,4.8rem)]">
-          <span className="features-heading-word inline-block">
-            Everything
-          </span>{" "}
+          <span className="features-heading-word inline-block">Everything</span>{" "}
           <span className="features-heading-word inline-block">you need</span>
           <br />
           <span className="features-heading-word inline-block text-orange-500">

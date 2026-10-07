@@ -258,9 +258,10 @@ const Home = () => {
               style={{ fontFamily: "Chelsea Market, system-ui" }}
               className="w-full md:min-w-[760px] text-[clamp(3rem,6.5vw,7.8rem)] font-black leading-[0.92] tracking-[-0.075em] [perspective:1000px] max-sm:text-[clamp(2.4rem,13vw,3.9rem)]"
             >
-              Master of 
+              Master of
               <span className="text-orange-500 [text-shadow:0_0_45px_rgba(249,115,22,0.18)]">
-                {" "}Keys
+                {" "}
+                Keys
               </span>
             </h1>
 

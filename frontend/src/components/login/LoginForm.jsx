@@ -19,6 +19,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 import { AuthContext } from "../../context/AuthContext";
 import api from "../../utils/api";
+import ForgotPassword from "../ui/ForgotPassword";
 
 const initialState = {
   identifier: "",
@@ -141,6 +142,7 @@ const LoginForm = () => {
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const { fetchUser } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -410,12 +412,13 @@ const LoginForm = () => {
                       Password
                     </label>
 
-                    <Link
-                      to="/forgot-password"
-                      className="font-sans text-[11px] font-semibold text-[#FF9100] transition-colors duration-200 hover:text-orange-300"
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(true)}
+                      className="font-sans text-[11px] font-semibold text-[#FF9100] transition-colors duration-200 hover:text-orange-300 cursor-pointer"
                     >
                       Forgot password?
-                    </Link>
+                    </button>
                   </div>
 
                   <div className={getInputContainerClasses("password")}>
@@ -561,6 +564,12 @@ const LoginForm = () => {
           </div>
         </div>
       </div>
+
+      <ForgotPassword
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        initialEmail={state.identifier.includes("@") ? state.identifier : ""}
+      />
 
       <ToastContainer
         position="bottom-right"

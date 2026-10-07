@@ -19,6 +19,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 import { AuthContext } from "../../context/AuthContext";
 import api from "../../utils/api";
+import ForgotPassword from "../ui/ForgotPassword";
 
 const initialState = {
   username: "",
@@ -183,6 +184,7 @@ const SignupForm = () => {
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const { fetchUser } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -654,10 +656,27 @@ const SignupForm = () => {
                   Log in
                 </Link>
               </p>
+
+              <p className="mt-2 text-center font-sans text-xs text-zinc-500">
+                Forgot your password?{" "}
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="font-semibold text-[#FF9100] transition-colors duration-200 hover:text-orange-300 hover:underline hover:underline-offset-4"
+                >
+                  Reset password
+                </button>
+              </p>
             </div>
           </div>
         </div>
       </div>
+
+      <ForgotPassword
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        initialEmail={state.email}
+      />
 
       <ToastContainer
         position="bottom-right"
