@@ -5,7 +5,7 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: "https://master-of-keys-7b7d.vercel.app/api",
   // baseURL: "http://localhost:5000/api", // Base URL for all endpoints
-  timeout: 5000,                         // Abort request if it takes longer than 5s
+  timeout: 10000,                         // Abort request if it takes longer than 5s
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
